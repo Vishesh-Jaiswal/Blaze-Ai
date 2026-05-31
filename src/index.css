@@ -125,3 +125,100 @@
     scrollbar-width: none;
   }
 }
+
+/* ============================================================
+   Light mode — best-effort override layer.
+   The app is built dark-first using Tailwind utilities directly,
+   so light mode swaps the most-used surface/text/border utilities
+   under `html.light`. Specificity (html.light .x) beats the base
+   utility, so most surfaces invert without touching components.
+   ============================================================ */
+html.light {
+  color-scheme: light;
+}
+html.light body {
+  background-color: #eef1f7;
+  color: #0f172a;
+}
+html.light ::selection {
+  background: rgba(47, 128, 255, 0.25);
+  color: #0f172a;
+}
+html.light ::-webkit-scrollbar-track {
+  background: #e2e8f0;
+}
+html.light ::-webkit-scrollbar-thumb {
+  border-color: #e2e8f0;
+}
+
+/* Base surfaces */
+html.light .bg-ink-900 { background-color: #eef1f7; }
+html.light .bg-ink-900\/60 { background-color: rgba(238, 241, 247, 0.7); }
+html.light .bg-ink-900\/80 { background-color: rgba(238, 241, 247, 0.85); }
+html.light .bg-ink-800 { background-color: #ffffff; }
+html.light .bg-ink-800\/60 { background-color: rgba(255, 255, 255, 0.95); }
+html.light .bg-ink-700 { background-color: #f8fafc; }
+
+/* Sidebar — give it a soft right shadow in light mode so it separates from the page */
+html.light aside { box-shadow: 1px 0 24px rgba(15, 23, 42, 0.08); }
+
+/* Active nav highlight reads as a faint wash in light mode — bump it a notch */
+html.light .bg-electric-500\/15 { background-color: rgba(47, 128, 255, 0.2); }
+html.light .bg-electric-500\/10 { background-color: rgba(47, 128, 255, 0.14); }
+
+/* Text — invert white/slate scale */
+html.light .text-white { color: #0f172a; }
+html.light .text-slate-200 { color: #1e293b; }
+html.light .text-slate-300 { color: #334155; }
+html.light .text-slate-400 { color: #475569; }
+html.light .text-slate-500 { color: #64748b; }
+html.light .text-slate-600 { color: #94a3b8; }
+
+/* Brand-blue accents — pale shades are unreadable on white, deepen them */
+html.light .text-electric-200 { color: #0a4fd1; }
+html.light .text-electric-300 { color: #0b63f6; }
+
+/* The white→light-blue gradient is invisible on light backgrounds. Swap it
+   for a deep-blue→cyan gradient that pops on white but still reads as brand. */
+html.light .text-gradient {
+  background-image: linear-gradient(120deg, #0a4fd1 0%, #0b63f6 45%, #06c8ff 100%);
+}
+
+/* Borders */
+html.light .border-white\/5 { border-color: rgba(15, 23, 42, 0.06); }
+html.light .border-white\/10 { border-color: rgba(15, 23, 42, 0.1); }
+html.light .border-white\/15 { border-color: rgba(15, 23, 42, 0.14); }
+html.light .border-white\/20 { border-color: rgba(15, 23, 42, 0.18); }
+
+/* Subtle translucent fills */
+html.light .bg-white\/\[0\.02\] { background-color: rgba(15, 23, 42, 0.03); }
+html.light .bg-white\/\[0\.03\] { background-color: rgba(15, 23, 42, 0.04); }
+html.light .bg-white\/\[0\.04\] { background-color: rgba(15, 23, 42, 0.05); }
+html.light .bg-white\/\[0\.06\] { background-color: rgba(15, 23, 42, 0.06); }
+html.light .bg-white\/\[0\.07\] { background-color: rgba(15, 23, 42, 0.07); }
+html.light .bg-white\/5 { background-color: rgba(15, 23, 42, 0.05); }
+html.light .bg-white\/10 { background-color: rgba(15, 23, 42, 0.08); }
+
+/* Glass panels — solid white wash with subtle shadow */
+html.light .glass {
+  background-color: rgba(255, 255, 255, 0.85);
+  border-color: rgba(15, 23, 42, 0.08);
+  box-shadow:
+    inset 0 1px 0 0 rgba(15, 23, 42, 0.04),
+    0 8px 24px rgba(15, 23, 42, 0.08);
+}
+html.light .glass-strong {
+  background-color: rgba(255, 255, 255, 0.96);
+  border-color: rgba(15, 23, 42, 0.12);
+  box-shadow:
+    inset 0 1px 0 0 rgba(15, 23, 42, 0.05),
+    0 12px 40px rgba(15, 23, 42, 0.12);
+}
+
+/* Inputs & placeholders */
+html.light input::placeholder,
+html.light textarea::placeholder { color: #94a3b8; }
+
+/* Hover states that brighten on dark should darken on light */
+html.light .hover\:bg-white\/5:hover { background-color: rgba(15, 23, 42, 0.05); }
+html.light .hover\:bg-white\/10:hover { background-color: rgba(15, 23, 42, 0.08); }

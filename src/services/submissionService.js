@@ -1,6 +1,7 @@
 import { delay, generateCertificateId, generateHash } from '@/lib/utils';
 import { SEED_SUBMISSIONS } from '@/data/mockData';
 import { createCertificate } from '@/services/certificateService';
+import { trackEvent, EVENT_TYPES } from '@/services/activityService';
 
 /**
  * Certificate submission workflow layer (localStorage-backed mock DB).
@@ -11,7 +12,7 @@ import { createCertificate } from '@/services/certificateService';
  * Internal submissions carry an assessment score; external submissions also
  * carry an issuing organisation and uploaded proof documents.
  */
-const KEY = 'mc.submissions';
+const KEY = 'mc.submissions.v2';
 
 function load() {
   try {
@@ -42,7 +43,7 @@ export async function getSubmission(id) {
   return load().find((s) => s.id === id) || null;
 }
 
-let counter = 5;
+let counter = 6;
 function nextId() {
   const seq = String(counter++).padStart(4, '0');
   return `SUB-2026-${seq}`;
@@ -73,6 +74,11 @@ export async function createSubmission(data) {
     issuedCertId: null,
   };
   save([submission, ...load()]);
+  trackEvent(submission.submittedById, EVENT_TYPES.SUBMITTED, {
+    submissionId: submission.id,
+    certificateName: submission.certificateName,
+    issuingOrg: submission.issuingOrg,
+  });
   return submission;
 }
 
@@ -80,7 +86,7 @@ export async function createSubmission(data) {
  * Admin decision. On approval an issued certificate is minted and linked back.
  * `decision` = 'approved' | 'rejected'.
  */
-export async function reviewSubmission(id, { decision, comment = '', reviewer, templateId = 'aurora' }) {
+export async function reviewSubmission(id, { decision, comment = '', reviewer, templateId = 'aurora', learningHours = 0 }) {
   await delay(600);
   const list = load();
   const submission = list.find((s) => s.id === id);
@@ -95,6 +101,7 @@ export async function reviewSubmission(id, { decision, comment = '', reviewer, t
       department: submission.department,
       score: submission.score,
       skills: submission.skills,
+      learningHours,
       templateId,
       issuedBy: submission.issuingOrg || 'Hexaware Mavericks Academy',
       source: submission.type,
@@ -111,9 +118,25 @@ export async function reviewSubmission(id, { decision, comment = '', reviewer, t
     reviewedAt: new Date().toISOString(),
     reviewedBy: reviewer || 'Administrator',
     adminComment: comment,
+    awardedHours: decision === 'approved' ? learningHours : 0,
     issuedCertId,
   };
   save(list.map((s) => (s.id === id ? updated : s)));
+
+  // Notify the recipient Maverick — write to THEIR activity log so the
+  // approval/rejection shows up in their notifications & timeline.
+  trackEvent(
+    submission.submittedById,
+    decision === 'approved' ? EVENT_TYPES.APPROVED : EVENT_TYPES.REJECTED,
+    {
+      submissionId: submission.id,
+      certificateName: submission.certificateName,
+      issuingOrg: submission.issuingOrg,
+      issuedCertId,
+      comment,
+      reviewer: updated.reviewedBy,
+    }
+  );
   return updated;
 }
 

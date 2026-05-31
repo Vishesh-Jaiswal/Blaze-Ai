@@ -39,7 +39,7 @@ const Input = forwardRef(function Input(
           <button
             type="button"
             onClick={() => setShow((s) => !s)}
-            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 transition-colors hover:text-electric-300"
+            className="absolute right-2 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-white/5 hover:text-electric-300"
             tabIndex={-1}
             aria-label={show ? 'Hide password' : 'Show password'}
           >

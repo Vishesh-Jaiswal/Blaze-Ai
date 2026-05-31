@@ -1,44 +1,37 @@
-import { useMemo } from 'react';
-import { seededRandom } from '@/lib/utils';
+import { QRCodeSVG } from 'qrcode.react';
 
 /**
- * Deterministic decorative QR-style matrix rendered as SVG.
- * Not a scannable QR — it's a stable visual derived from `value`, used to
- * convey "this credential carries a verifiable code". Includes finder patterns.
+ * Real scannable QR code for certificate verification.
+ *
+ * The QR encodes the public verification URL for this credential:
+ *   {origin}/verify?id=CERT_ID
+ *
+ * Scanning it with any phone camera opens the public verifier with the
+ * cert ID pre-filled — no login required.
+ *
+ * If a `value` prop is passed explicitly, that takes precedence (so the
+ * component can still be reused for ad-hoc payloads).
  */
-export default function QRCode({ value = 'mavericks', size = 120, fg = '#05060f', bg = '#ffffff', className = '' }) {
-  const grid = 21;
-  const cells = useMemo(() => {
-    const out = [];
-    for (let y = 0; y < grid; y++) {
-      for (let x = 0; x < grid; x++) {
-        const inFinder =
-          (x < 7 && y < 7) || (x >= grid - 7 && y < 7) || (x < 7 && y >= grid - 7);
-        if (inFinder) continue;
-        if (seededRandom(`${value}-${x}-${y}`) > 0.55) out.push({ x, y });
-      }
-    }
-    return out;
-  }, [value]);
-
-  const unit = size / grid;
-  const Finder = ({ ox, oy }) => (
-    <g>
-      <rect x={ox * unit} y={oy * unit} width={unit * 7} height={unit * 7} fill={fg} />
-      <rect x={(ox + 1) * unit} y={(oy + 1) * unit} width={unit * 5} height={unit * 5} fill={bg} />
-      <rect x={(ox + 2) * unit} y={(oy + 2) * unit} width={unit * 3} height={unit * 3} fill={fg} />
-    </g>
-  );
+export default function QRCode({
+  value,
+  certId,
+  size = 120,
+  fg = '#05060f',
+  bg = '#ffffff',
+  className = '',
+}) {
+  const origin = typeof window !== 'undefined' ? window.location.origin : '';
+  const payload = value || (certId ? `${origin}/verify?id=${encodeURIComponent(certId)}` : `${origin}/verify`);
 
   return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className={className} shapeRendering="crispEdges">
-      <rect width={size} height={size} fill={bg} rx={unit} />
-      {cells.map((c, i) => (
-        <rect key={i} x={c.x * unit} y={c.y * unit} width={unit} height={unit} fill={fg} />
-      ))}
-      <Finder ox={0} oy={0} />
-      <Finder ox={grid - 7} oy={0} />
-      <Finder ox={0} oy={grid - 7} />
-    </svg>
+    <QRCodeSVG
+      value={payload}
+      size={size}
+      bgColor={bg}
+      fgColor={fg}
+      level="M"
+      marginSize={2}
+      className={className}
+    />
   );
 }

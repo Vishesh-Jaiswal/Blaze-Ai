@@ -2,19 +2,18 @@ import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  UploadCloud, Building2, GraduationCap, FileText, Image as ImageIcon, X, Plus,
-  Send, CalendarDays, Gauge, Award, Sparkles, Paperclip,
+  UploadCloud, Building2, FileText, Image as ImageIcon, X, Plus,
+  Send, CalendarDays, Gauge, Award, Sparkles, Paperclip, Info,
 } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
 import GlassCard from '@/components/ui/GlassCard';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
-import Select from '@/components/ui/Select';
 import Badge from '@/components/ui/Badge';
 import { useAuthStore } from '@/store/authStore';
 import { useToast } from '@/store/toastStore';
 import { createSubmission } from '@/services/submissionService';
-import { COURSES, SKILL_BANK } from '@/data/mockData';
+import { SKILL_BANK } from '@/data/mockData';
 import { cn } from '@/lib/utils';
 
 const MAX_DOC_BYTES = 6 * 1024 * 1024; // 6 MB cap per file
@@ -40,18 +39,17 @@ function prettySize(bytes) {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
-const TABS = [
-  { id: 'internal', label: 'Internal certificate', icon: GraduationCap, hint: 'Hexaware assessment / course' },
-  { id: 'external', label: 'External certificate', icon: Building2, hint: 'Third-party credential + proof' },
-];
-
+/**
+ * Maverick-facing external credential submission.
+ * Internal Hexaware certificates are auto-issued by HR/L&D via the AI Generator,
+ * so this page only handles external (3rd-party) credentials.
+ */
 export default function SubmitCertificate() {
   const user = useAuthStore((s) => s.user);
   const toast = useToast();
   const navigate = useNavigate();
   const fileRef = useRef(null);
 
-  const [type, setType] = useState('internal');
   const [form, setForm] = useState({
     certificateName: '',
     issuingOrg: '',
@@ -103,12 +101,10 @@ export default function SubmitCertificate() {
   const validate = () => {
     const e = {};
     if (!form.certificateName.trim()) e.certificateName = 'Certificate name is required';
+    if (!form.issuingOrg.trim()) e.issuingOrg = 'Issuing organization is required';
     if (!form.completionDate) e.completionDate = 'Completion date is required';
     if (form.score === '' || isNaN(Number(form.score))) e.score = 'Enter a valid score';
-    if (type === 'external') {
-      if (!form.issuingOrg.trim()) e.issuingOrg = 'Issuing organization is required';
-      if (docs.length === 0) e.documents = 'Upload at least one proof document';
-    }
+    if (docs.length === 0) e.documents = 'Upload at least one proof document';
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -121,13 +117,13 @@ export default function SubmitCertificate() {
     setSubmitting(true);
     try {
       await createSubmission({
-        type,
+        type: 'external',
         submittedById: user.id,
         submittedByName: user.name,
         submittedByEmail: user.email,
         department: user.department,
         certificateName: form.certificateName.trim(),
-        issuingOrg: type === 'external' ? form.issuingOrg.trim() : 'Hexaware Mavericks Academy',
+        issuingOrg: form.issuingOrg.trim(),
         score: Number(form.score),
         completionDate: form.completionDate,
         remarks: form.remarks.trim(),
@@ -151,85 +147,55 @@ export default function SubmitCertificate() {
       <PageHeader
         eyebrow="Workflow"
         icon={UploadCloud}
-        title="Submit a certificate"
-        description="Request recognition for an internal assessment or upload an external credential. Your submission is reviewed by an admin before it joins your profile."
+        title="Submit an external credential"
+        description="Upload a third-party certification (AWS, Google, Microsoft, Coursera…) for admin review. Once approved, it joins your verified Mavericks profile."
       />
 
-      {/* Type tabs */}
-      <div className="mb-6 grid gap-3 sm:grid-cols-2">
-        {TABS.map((t) => {
-          const active = type === t.id;
-          return (
-            <button
-              key={t.id}
-              type="button"
-              onClick={() => setType(t.id)}
-              className={cn(
-                'flex items-center gap-3 rounded-2xl border p-4 text-left transition-all',
-                active
-                  ? 'border-electric-400/50 bg-electric-500/10 shadow-glow-sm'
-                  : 'border-white/10 bg-white/[0.02] hover:border-white/20'
-              )}
-            >
-              <div
-                className={cn(
-                  'flex h-11 w-11 shrink-0 items-center justify-center rounded-xl',
-                  active ? 'bg-electric-gradient text-white shadow-glow-sm' : 'bg-white/5 text-slate-300'
-                )}
-              >
-                <t.icon className="h-5 w-5" />
-              </div>
-              <div>
-                <p className="font-medium text-white">{t.label}</p>
-                <p className="text-xs text-slate-400">{t.hint}</p>
-              </div>
-              {active && <div className="ml-auto h-2.5 w-2.5 rounded-full bg-electric-400 shadow-[0_0_10px_currentColor]" />}
-            </button>
-          );
-        })}
-      </div>
+      {/* Info banner: internal certs are auto-issued */}
+      <GlassCard className="mb-6 flex items-start gap-3 p-4">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-electric-500/15 text-electric-300">
+          <Info className="h-5 w-5" />
+        </div>
+        <div className="text-sm">
+          <p className="font-medium text-white">Internal Hexaware certificates are assigned automatically</p>
+          <p className="mt-0.5 text-slate-400">
+            Cohort, assessment and academy certificates are issued directly by HR/L&amp;D when you complete a track — you don't need to submit those here.
+          </p>
+        </div>
+      </GlassCard>
 
       <div className="grid gap-6 lg:grid-cols-3">
         <GlassCard className="p-6 lg:col-span-2">
           <div className="grid gap-5 sm:grid-cols-2">
-            <div className="sm:col-span-2">
-              <Input
-                label="Certificate name"
-                icon={Award}
-                list={type === 'internal' ? 'course-list' : undefined}
-                placeholder={type === 'internal' ? 'e.g. Cloud Foundations on AWS' : 'e.g. AWS Certified Solutions Architect'}
-                value={form.certificateName}
-                onChange={(e) => set('certificateName', e.target.value)}
-                error={errors.certificateName}
-              />
-              {type === 'internal' && (
-                <datalist id="course-list">
-                  {COURSES.map((c) => <option key={c} value={c} />)}
-                </datalist>
-              )}
-            </div>
-
-            {type === 'external' && (
-              <Input
-                label="Issuing organization"
-                icon={Building2}
-                placeholder="e.g. Amazon Web Services"
-                value={form.issuingOrg}
-                onChange={(e) => set('issuingOrg', e.target.value)}
-                error={errors.issuingOrg}
-                containerClass="sm:col-span-2"
-              />
-            )}
+            <Input
+              label="Certificate name"
+              icon={Award}
+              placeholder="e.g. AWS Certified Solutions Architect"
+              value={form.certificateName}
+              onChange={(e) => set('certificateName', e.target.value)}
+              error={errors.certificateName}
+              containerClass="sm:col-span-2"
+            />
 
             <Input
-              label={type === 'internal' ? 'Assessment score (%)' : 'Exam / assessment score'}
+              label="Issuing organization"
+              icon={Building2}
+              placeholder="e.g. Amazon Web Services"
+              value={form.issuingOrg}
+              onChange={(e) => set('issuingOrg', e.target.value)}
+              error={errors.issuingOrg}
+              containerClass="sm:col-span-2"
+            />
+
+            <Input
+              label="Exam / assessment score"
               icon={Gauge}
               type="number"
-              placeholder={type === 'internal' ? '0–100' : 'e.g. 870'}
+              placeholder="e.g. 870"
               value={form.score}
               onChange={(e) => set('score', e.target.value)}
               error={errors.score}
-              hint={type === 'external' ? 'Use the scale on your certificate' : undefined}
+              hint="Use the scale on your certificate"
             />
 
             <Input
@@ -293,64 +259,62 @@ export default function SubmitCertificate() {
               />
             </div>
 
-            {/* External upload */}
-            {type === 'external' && (
-              <div className="sm:col-span-2">
-                <label className="mb-1.5 block text-sm font-medium text-slate-300">Proof documents <span className="text-rose-400">*</span></label>
-                <div
-                  onClick={() => fileRef.current?.click()}
-                  onDragOver={(e) => e.preventDefault()}
-                  onDrop={(e) => { e.preventDefault(); onFiles(e.dataTransfer.files); }}
-                  className={cn(
-                    'flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed px-6 py-8 text-center transition-colors',
-                    errors.documents ? 'border-rose-500/50 bg-rose-500/5' : 'border-white/15 hover:border-electric-400/50 hover:bg-electric-500/5'
-                  )}
-                >
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-electric-500/15">
-                    <UploadCloud className="h-6 w-6 text-electric-300" />
-                  </div>
-                  <p className="text-sm font-medium text-white">Click to upload or drag & drop</p>
-                  <p className="text-xs text-slate-500">PDF, PNG or JPG · up to 6 MB each</p>
-                  <input
-                    ref={fileRef}
-                    type="file"
-                    accept=".pdf,image/*"
-                    multiple
-                    className="hidden"
-                    onChange={(e) => { onFiles(e.target.files); e.target.value = ''; }}
-                  />
+            {/* Proof documents */}
+            <div className="sm:col-span-2">
+              <label className="mb-1.5 block text-sm font-medium text-slate-300">Proof documents <span className="text-rose-400">*</span></label>
+              <div
+                onClick={() => fileRef.current?.click()}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => { e.preventDefault(); onFiles(e.dataTransfer.files); }}
+                className={cn(
+                  'flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed px-6 py-8 text-center transition-colors',
+                  errors.documents ? 'border-rose-500/50 bg-rose-500/5' : 'border-white/15 hover:border-electric-400/50 hover:bg-electric-500/5'
+                )}
+              >
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-electric-500/15">
+                  <UploadCloud className="h-6 w-6 text-electric-300" />
                 </div>
-                {errors.documents && <p className="mt-1.5 text-xs text-rose-400">{errors.documents}</p>}
-
-                <div className="mt-3 space-y-2">
-                  <AnimatePresence>
-                    {docs.map((d) => (
-                      <motion.div
-                        key={d.name}
-                        layout
-                        initial={{ opacity: 0, y: 8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, x: -20 }}
-                        className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-2.5"
-                      >
-                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/5">
-                          {d.type.startsWith('image/')
-                            ? <ImageIcon className="h-4.5 w-4.5 text-cyanglow-300" />
-                            : <FileText className="h-4.5 w-4.5 text-electric-300" />}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm text-white">{d.name}</p>
-                          <p className="text-xs text-slate-500">{prettySize(d.size)}</p>
-                        </div>
-                        <button type="button" onClick={() => removeDoc(d.name)} className="rounded-lg p-1.5 text-slate-400 hover:bg-white/5 hover:text-rose-300">
-                          <X className="h-4 w-4" />
-                        </button>
-                      </motion.div>
-                    ))}
-                  </AnimatePresence>
-                </div>
+                <p className="text-sm font-medium text-white">Click to upload or drag &amp; drop</p>
+                <p className="text-xs text-slate-500">PDF, PNG or JPG · up to 6 MB each</p>
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept=".pdf,image/*"
+                  multiple
+                  className="hidden"
+                  onChange={(e) => { onFiles(e.target.files); e.target.value = ''; }}
+                />
               </div>
-            )}
+              {errors.documents && <p className="mt-1.5 text-xs text-rose-400">{errors.documents}</p>}
+
+              <div className="mt-3 space-y-2">
+                <AnimatePresence>
+                  {docs.map((d) => (
+                    <motion.div
+                      key={d.name}
+                      layout
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, x: -20 }}
+                      className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-2.5"
+                    >
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/5">
+                        {d.type.startsWith('image/')
+                          ? <ImageIcon className="h-4.5 w-4.5 text-cyanglow-300" />
+                          : <FileText className="h-4.5 w-4.5 text-electric-300" />}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm text-white">{d.name}</p>
+                        <p className="text-xs text-slate-500">{prettySize(d.size)}</p>
+                      </div>
+                      <button type="button" onClick={() => removeDoc(d.name)} className="rounded-lg p-1.5 text-slate-400 hover:bg-white/5 hover:text-rose-300">
+                        <X className="h-4 w-4" />
+                      </button>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              </div>
+            </div>
           </div>
 
           <div className="mt-6 flex items-center justify-end gap-3 border-t border-white/10 pt-5">
@@ -366,16 +330,13 @@ export default function SubmitCertificate() {
               <Sparkles className="h-3.5 w-3.5" /> Submission preview
             </p>
             <div className="space-y-3 text-sm">
-              <Row label="Type" value={<Badge tone={type === 'external' ? 'cyan' : 'electric'}>{type === 'external' ? 'External' : 'Internal'}</Badge>} />
               <Row label="Maverick" value={user.name} />
               <Row label="Department" value={user.department} />
               <Row label="Certificate" value={form.certificateName || '—'} />
-              {type === 'external' && <Row label="Issuer" value={form.issuingOrg || '—'} />}
-              <Row label="Score" value={form.score !== '' ? `${form.score}${type === 'internal' ? '%' : ''}` : '—'} />
+              <Row label="Issuer" value={form.issuingOrg || '—'} />
+              <Row label="Score" value={form.score !== '' ? form.score : '—'} />
               <Row label="Completed" value={form.completionDate || '—'} />
-              {type === 'external' && (
-                <Row label="Documents" value={<span className="flex items-center gap-1.5"><Paperclip className="h-3.5 w-3.5" />{docs.length}</span>} />
-              )}
+              <Row label="Documents" value={<span className="flex items-center gap-1.5"><Paperclip className="h-3.5 w-3.5" />{docs.length}</span>} />
             </div>
           </GlassCard>
 

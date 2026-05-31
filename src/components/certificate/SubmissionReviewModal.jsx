@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
   Check, X, FileText, Image as ImageIcon, Building2, GraduationCap, Gauge,
-  CalendarDays, User, MessageSquare, ExternalLink, ShieldCheck, Award,
+  CalendarDays, User, MessageSquare, ExternalLink, ShieldCheck, Award, Clock,
 } from 'lucide-react';
 import Modal from '@/components/ui/Modal';
 import Button from '@/components/ui/Button';
@@ -22,10 +22,15 @@ const statusTone = { pending: 'warning', approved: 'success', rejected: 'danger'
  */
 export default function SubmissionReviewModal({ submission, open, onClose, onDecision, busy }) {
   const [comment, setComment] = useState('');
+  const [hours, setHours] = useState(20);
   const [previewDoc, setPreviewDoc] = useState(null);
 
   useEffect(() => {
-    if (open) { setComment(submission?.adminComment || ''); setPreviewDoc(null); }
+    if (open) {
+      setComment(submission?.adminComment || '');
+      setHours(submission?.suggestedHours || 20);
+      setPreviewDoc(null);
+    }
   }, [open, submission]);
 
   if (!submission) return null;
@@ -135,17 +140,35 @@ export default function SubmissionReviewModal({ submission, open, onClose, onDec
               )}
             </div>
           ) : (
-            <div>
-              <label className="mb-1.5 flex items-center gap-1.5 text-sm font-medium text-slate-300">
-                <MessageSquare className="h-3.5 w-3.5" /> Comment / rejection reason
-              </label>
-              <textarea
-                rows={3}
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-                placeholder="Add a note for the Maverick (required when rejecting)…"
-                className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 text-sm text-white placeholder:text-slate-500 transition-all focus:outline-none focus:bg-white/[0.06] focus:ring-2 focus:ring-electric-400/40 focus:border-electric-400/50 hover:border-white/20"
-              />
+            <div className="space-y-3">
+              <div>
+                <label className="mb-1.5 flex items-center gap-1.5 text-sm font-medium text-slate-300">
+                  <Clock className="h-3.5 w-3.5" /> Learning hours to award
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min="0"
+                    max="500"
+                    value={hours}
+                    onChange={(e) => setHours(Math.max(0, Number(e.target.value) || 0))}
+                    className="h-10 w-24 rounded-xl border border-white/10 bg-white/[0.03] px-3 text-sm text-white focus:border-electric-400/50 focus:outline-none focus:ring-2 focus:ring-electric-400/30"
+                  />
+                  <span className="text-xs text-slate-500">hours · added to the Maverick's total on approval</span>
+                </div>
+              </div>
+              <div>
+                <label className="mb-1.5 flex items-center gap-1.5 text-sm font-medium text-slate-300">
+                  <MessageSquare className="h-3.5 w-3.5" /> Comment / rejection reason
+                </label>
+                <textarea
+                  rows={3}
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
+                  placeholder="Add a note for the Maverick (required when rejecting)…"
+                  className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 text-sm text-white placeholder:text-slate-500 transition-all focus:outline-none focus:bg-white/[0.06] focus:ring-2 focus:ring-electric-400/40 focus:border-electric-400/50 hover:border-white/20"
+                />
+              </div>
             </div>
           )}
         </div>
@@ -158,7 +181,7 @@ export default function SubmissionReviewModal({ submission, open, onClose, onDec
             icon={X}
             loading={busy === 'rejected'}
             disabled={!!busy || !comment.trim()}
-            onClick={() => onDecision(submission, 'rejected', comment.trim())}
+            onClick={() => onDecision(submission, 'rejected', comment.trim(), 0)}
           >
             Reject
           </Button>
@@ -167,7 +190,7 @@ export default function SubmissionReviewModal({ submission, open, onClose, onDec
             icon={Check}
             loading={busy === 'approved'}
             disabled={!!busy}
-            onClick={() => onDecision(submission, 'approved', comment.trim())}
+            onClick={() => onDecision(submission, 'approved', comment.trim(), hours)}
           >
             Approve &amp; issue
           </Button>

@@ -1,8 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  ClipboardCheck, Check, X, Eye, Building2, GraduationCap, Paperclip, Clock,
-  Inbox, Filter,
+  ClipboardCheck, Check, X, Eye, Building2, Paperclip, Clock, Inbox,
 } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
 import GlassCard from '@/components/ui/GlassCard';
@@ -13,19 +12,12 @@ import SubmissionReviewModal from '@/components/certificate/SubmissionReviewModa
 import { listSubmissions, reviewSubmission } from '@/services/submissionService';
 import { useAuthStore } from '@/store/authStore';
 import { useToast } from '@/store/toastStore';
-import { timeAgo, cn } from '@/lib/utils';
-
-const FILTERS = [
-  { id: 'all', label: 'All' },
-  { id: 'internal', label: 'Internal' },
-  { id: 'external', label: 'External' },
-];
+import { timeAgo } from '@/lib/utils';
 
 export default function ApprovalQueue() {
   const user = useAuthStore((s) => s.user);
   const toast = useToast();
   const [items, setItems] = useState(null);
-  const [filter, setFilter] = useState('all');
   const [selected, setSelected] = useState([]);
   const [review, setReview] = useState(null);
   const [busy, setBusy] = useState(null);
@@ -35,20 +27,17 @@ export default function ApprovalQueue() {
     listSubmissions({ status: 'pending' }).then(setItems);
   }, []);
 
-  const visible = useMemo(
-    () => (items || []).filter((s) => filter === 'all' || s.type === filter),
-    [items, filter]
-  );
+  const visible = items || [];
 
-  const decide = async (submission, decision, comment) => {
+  const decide = async (submission, decision, comment, learningHours = 0) => {
     setBusy(decision);
-    await reviewSubmission(submission.id, { decision, comment, reviewer: user.name });
+    await reviewSubmission(submission.id, { decision, comment, reviewer: user.name, learningHours });
     setItems((list) => list.filter((s) => s.id !== submission.id));
     setSelected((s) => s.filter((x) => x !== submission.id));
     setBusy(null);
     setReview(null);
     toast[decision === 'approved' ? 'success' : 'warning'](
-      decision === 'approved' ? 'Approved — certificate issued' : 'Submission rejected'
+      decision === 'approved' ? `Approved — ${learningHours}h awarded & certificate issued` : 'Submission rejected'
     );
   };
 
@@ -57,12 +46,12 @@ export default function ApprovalQueue() {
     const ids = [...selected];
     for (const id of ids) {
       const sub = items.find((s) => s.id === id);
-      if (sub) await reviewSubmission(id, { decision: 'approved', comment: 'Bulk approved', reviewer: user.name });
+      if (sub) await reviewSubmission(id, { decision: 'approved', comment: 'Bulk approved', reviewer: user.name, learningHours: 20 });
     }
     setItems((list) => list.filter((s) => !ids.includes(s.id)));
     setSelected([]);
     setBulkBusy(false);
-    toast.success(`${ids.length} certificate${ids.length > 1 ? 's' : ''} approved & issued`);
+    toast.success(`${ids.length} certificate${ids.length > 1 ? 's' : ''} approved & 20h each awarded`);
   };
 
   const toggle = (id) => setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
@@ -73,7 +62,7 @@ export default function ApprovalQueue() {
         eyebrow="Workflow"
         icon={ClipboardCheck}
         title="Pending approvals"
-        description="Review Maverick-submitted certificates — internal assessments and external credentials with proof documents. Approve to issue, or reject with a reason."
+        description="Review Maverick-submitted external credentials with proof documents. Approve to issue, or reject with a reason."
         actions={
           selected.length > 0 && (
             <Button icon={Check} variant="success" loading={bulkBusy} onClick={bulkApprove}>
@@ -82,25 +71,6 @@ export default function ApprovalQueue() {
           )
         }
       />
-
-      {/* Type filter */}
-      <div className="mb-5 flex items-center gap-2">
-        <Filter className="h-4 w-4 text-slate-500" />
-        {FILTERS.map((f) => (
-          <button
-            key={f.id}
-            onClick={() => setFilter(f.id)}
-            className={cn(
-              'rounded-full border px-4 py-1.5 text-sm font-medium transition-all',
-              filter === f.id
-                ? 'border-electric-400/50 bg-electric-500/15 text-white'
-                : 'border-white/10 text-slate-400 hover:border-white/20 hover:text-white'
-            )}
-          >
-            {f.label}
-          </button>
-        ))}
-      </div>
 
       {!items ? (
         <div className="flex h-48 items-center justify-center"><Spinner label="Loading queue…" /></div>
@@ -115,9 +85,7 @@ export default function ApprovalQueue() {
       ) : (
         <div className="space-y-3">
           <AnimatePresence>
-            {visible.map((s, i) => {
-              const external = s.type === 'external';
-              return (
+            {visible.map((s, i) => (
                 <motion.div
                   key={s.id}
                   layout
@@ -135,31 +103,29 @@ export default function ApprovalQueue() {
                     />
                     <div className="flex flex-1 items-center gap-3">
                       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-electric-500/15 text-electric-200">
-                        {external ? <Building2 className="h-5 w-5" /> : <GraduationCap className="h-5 w-5" />}
+                        <Building2 className="h-5 w-5" />
                       </div>
                       <div className="min-w-0">
                         <p className="truncate font-medium text-white">{s.certificateName}</p>
                         <p className="truncate text-sm text-slate-500">
-                          {s.submittedByName} · {external ? s.issuingOrg : s.department}
+                          {s.submittedByName} · {s.issuingOrg}
                         </p>
                       </div>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
-                      <Badge tone={external ? 'cyan' : 'electric'}>{external ? 'External' : 'Internal'}</Badge>
-                      <Badge tone="neutral">Score {s.score}{external ? '' : '%'}</Badge>
-                      {external && s.documents?.length > 0 && (
+                      <Badge tone="neutral">Score {s.score}</Badge>
+                      {s.documents?.length > 0 && (
                         <Badge tone="violet"><Paperclip className="h-3 w-3" /> {s.documents.length}</Badge>
                       )}
                       <Badge tone="warning"><Clock className="h-3 w-3" /> {timeAgo(s.submittedAt)}</Badge>
                     </div>
                     <div className="flex items-center gap-2">
                       <Button size="sm" variant="ghost" icon={Eye} onClick={() => setReview(s)}>Review</Button>
-                      <Button size="sm" variant="success" icon={Check} loading={busy === 'approved' && review?.id === s.id} onClick={() => decide(s, 'approved', 'Approved')}>Approve</Button>
+                      <Button size="sm" variant="success" icon={Check} loading={busy === 'approved' && review?.id === s.id} onClick={() => decide(s, 'approved', 'Approved', 20)}>Approve</Button>
                     </div>
                   </GlassCard>
                 </motion.div>
-              );
-            })}
+              ))}
           </AnimatePresence>
         </div>
       )}

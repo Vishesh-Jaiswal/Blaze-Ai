@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Sparkles, Wand2, Award, Download, RefreshCw, Check, Plus, X, Brain, Palette, Send,
+  Sparkles, Wand2, Award, Download, RefreshCw, Check, Plus, X, Brain, Palette, Send, FileText,
 } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
 import GlassCard from '@/components/ui/GlassCard';
@@ -13,25 +13,39 @@ import CertificatePreview from '@/components/certificate/CertificatePreview';
 import { COURSES, DEPARTMENTS, SKILL_BANK, TEMPLATES } from '@/data/mockData';
 import { generateAchievementSummary, recommendTemplate, suggestSkills } from '@/services/aiService';
 import { createCertificate } from '@/services/certificateService';
-import { downloadCertificateHtml } from '@/lib/certificateExport';
+import { listUsers } from '@/services/authService';
+import { trackEvent, EVENT_TYPES } from '@/services/activityService';
+import { viewCertificatePdf, downloadCertificatePdf } from '@/lib/certificateExport';
 import { useToast } from '@/store/toastStore';
 import { cn } from '@/lib/utils';
+import { ROLES } from '@/config/roles';
 
 const STEPS = ['Details', 'AI Narrative', 'Design', 'Issue'];
 
 export default function CertificateGenerator() {
   const toast = useToast();
+  const previewRef = useRef(null);
+  const [pdfBusy, setPdfBusy] = useState(null);
   const [step, setStep] = useState(0);
   const [form, setForm] = useState({
+    recipientId: '',
     recipientName: '',
+    recipientEmail: '',
     course: COURSES[0],
     department: DEPARTMENTS[0],
     score: 92,
     duration: '8 weeks',
+    learningHours: 40,
     skills: ['React', 'System Design'],
     managerFeedback: '',
     templateId: 'aurora',
   });
+  const [mavericks, setMavericks] = useState([]);
+
+  // Load all registered Mavericks for the recipient dropdown.
+  useEffect(() => {
+    listUsers({ role: ROLES.MAVERICK }).then(setMavericks);
+  }, []);
   const [summary, setSummary] = useState('');
   const [generating, setGenerating] = useState(false);
   const [recommending, setRecommending] = useState(false);
@@ -49,6 +63,22 @@ export default function CertificateGenerator() {
     manager: 'Hexaware Mavericks Academy',
   };
 
+  const handleViewPdf = async () => {
+    if (pdfBusy) return;
+    setPdfBusy('view');
+    try { await viewCertificatePdf(previewRef.current, cert); }
+    catch (_) { toast.error('Could not open PDF'); }
+    finally { setPdfBusy(null); }
+  };
+
+  const handleDownloadPdf = async () => {
+    if (pdfBusy) return;
+    setPdfBusy('download');
+    try { await downloadCertificatePdf(previewRef.current, cert); toast.success('PDF downloaded'); }
+    catch (_) { toast.error('Could not generate PDF'); }
+    finally { setPdfBusy(null); }
+  };
+
   const addSkill = (s) => {
     const skill = (s || skillInput).trim();
     if (skill && !form.skills.includes(skill)) set('skills')([...form.skills, skill]);
@@ -63,7 +93,7 @@ export default function CertificateGenerator() {
   };
 
   const handleGenerate = async () => {
-    if (!form.recipientName.trim()) return toast.error('Enter a recipient name first');
+    if (!form.recipientId || !form.recipientName.trim()) return toast.error('Pick a Maverick to issue this to first');
     setGenerating(true);
     try {
       const text = await generateAchievementSummary(form);
@@ -90,6 +120,15 @@ export default function CertificateGenerator() {
     const created = await createCertificate({ ...form, summary });
     setIssued(created);
     setStep(3);
+    // Notify the recipient Maverick — log to THEIR activity feed.
+    if (form.recipientId) {
+      trackEvent(form.recipientId, EVENT_TYPES.ISSUED, {
+        certificateName: form.course,
+        certId: created.id,
+        learningHours: form.learningHours,
+        issuedBy: 'Hexaware Mavericks Academy',
+      });
+    }
     toast.success('Certificate issued & recorded on the ledger!');
   };
 
@@ -97,7 +136,7 @@ export default function CertificateGenerator() {
     setIssued(null);
     setSummary('');
     setStep(0);
-    setForm((f) => ({ ...f, recipientName: '', managerFeedback: '' }));
+    setForm((f) => ({ ...f, recipientId: '', recipientName: '', recipientEmail: '', managerFeedback: '' }));
   };
 
   return (
@@ -132,12 +171,31 @@ export default function CertificateGenerator() {
               <motion.div key="details" initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }}>
                 <GlassCard className="space-y-4 p-6">
                   <h3 className="flex items-center gap-2 font-semibold text-white"><Wand2 className="h-4 w-4 text-electric-300" /> Achievement details</h3>
-                  <Input label="Recipient name" placeholder="e.g. Aarav Sharma" value={form.recipientName} onChange={set('recipientName')} />
+                  <RecipientPicker
+                    mavericks={mavericks}
+                    selected={form.recipientId}
+                    onSelect={(m) => setForm((f) => ({
+                      ...f,
+                      recipientId: m.id,
+                      recipientName: m.name,
+                      recipientEmail: m.email,
+                      department: m.department || f.department,
+                    }))}
+                  />
                   <Select label="Course / Program" value={form.course} onChange={set('course')} options={COURSES} />
                   <div className="grid grid-cols-2 gap-4">
                     <Select label="Department" value={form.department} onChange={set('department')} options={DEPARTMENTS} />
                     <Input label="Duration" value={form.duration} onChange={set('duration')} />
                   </div>
+                  <Input
+                    label="Learning hours awarded"
+                    type="number"
+                    min="0"
+                    max="500"
+                    value={form.learningHours}
+                    onChange={(e) => set('learningHours')(Math.max(0, Number(e.target.value) || 0))}
+                    hint="Added to the Maverick's total learning hours on the leaderboard."
+                  />
                   <div>
                     <label className="mb-1.5 block text-sm font-medium text-slate-300">Assessment score: <span className="text-electric-300">{form.score}%</span></label>
                     <input type="range" min="60" max="100" value={form.score} onChange={set('score')} className="w-full accent-electric-500" />
@@ -254,9 +312,10 @@ export default function CertificateGenerator() {
                   <h3 className="font-display text-xl font-bold text-white">Certificate issued!</h3>
                   <p className="text-sm text-slate-400">Recorded on the Hexaware ledger and ready to share.</p>
                   <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3 font-mono text-xs text-electric-200">{issued.id}</div>
-                  <div className="flex gap-2">
-                    <Button className="flex-1" icon={Download} onClick={() => downloadCertificateHtml(cert)}>Download</Button>
-                    <Button variant="secondary" icon={RefreshCw} onClick={reset}>New certificate</Button>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button icon={FileText} loading={pdfBusy === 'view'} disabled={!!pdfBusy} onClick={handleViewPdf}>View PDF</Button>
+                    <Button variant="secondary" icon={Download} loading={pdfBusy === 'download'} disabled={!!pdfBusy} onClick={handleDownloadPdf}>Download</Button>
+                    <Button variant="ghost" icon={RefreshCw} className="col-span-2" onClick={reset}>New certificate</Button>
                   </div>
                 </GlassCard>
               </motion.div>
@@ -271,10 +330,108 @@ export default function CertificateGenerator() {
             <Badge tone="electric" dot>Real-time</Badge>
           </div>
           <motion.div layout transition={{ type: 'spring', stiffness: 200, damping: 24 }}>
-            <CertificatePreview cert={cert} templateId={form.templateId} />
+            <CertificatePreview ref={previewRef} cert={cert} templateId={form.templateId} />
           </motion.div>
         </div>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Searchable Maverick picker. Shows name + email for each candidate.
+ * Empty registry → shows a helpful empty state instead of an unusable input.
+ */
+function RecipientPicker({ mavericks, selected, onSelect }) {
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState('');
+  const ref = useRef(null);
+  const selectedM = mavericks.find((m) => m.id === selected);
+
+  useEffect(() => {
+    const onDown = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, []);
+
+  const filtered = mavericks.filter(
+    (m) =>
+      !q.trim() ||
+      m.name.toLowerCase().includes(q.toLowerCase()) ||
+      m.email.toLowerCase().includes(q.toLowerCase())
+  );
+
+  return (
+    <div className="relative" ref={ref}>
+      <label className="mb-1.5 block text-sm font-medium text-slate-300">Recipient (Maverick)</label>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className={cn(
+          'flex h-12 w-full items-center justify-between rounded-xl border bg-white/[0.03] px-4 text-left text-sm transition-all hover:border-white/20',
+          open ? 'border-electric-400/50 ring-2 ring-electric-400/30' : 'border-white/10'
+        )}
+      >
+        {selectedM ? (
+          <span className="flex min-w-0 flex-1 items-center gap-2.5">
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-electric-gradient text-[10px] font-bold text-white">
+              {selectedM.name.split(' ').map((n) => n[0]).join('')}
+            </span>
+            <span className="min-w-0">
+              <span className="block truncate text-white">{selectedM.name}</span>
+              <span className="block truncate text-xs text-slate-500">{selectedM.email}</span>
+            </span>
+          </span>
+        ) : (
+          <span className="text-slate-500">Select a Maverick…</span>
+        )}
+        <Plus className={cn('h-4 w-4 shrink-0 text-slate-400 transition-transform', open && 'rotate-45')} />
+      </button>
+
+      {open && (
+        <div className="absolute left-0 right-0 z-30 mt-2 overflow-hidden rounded-xl border border-white/10 bg-ink-900 shadow-2xl shadow-black/60">
+          <div className="border-b border-white/10 p-2">
+            <input
+              autoFocus
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Search by name or email…"
+              className="h-9 w-full rounded-lg border border-white/10 bg-white/[0.03] px-3 text-sm text-white placeholder:text-slate-500 focus:border-electric-400/50 focus:outline-none"
+            />
+          </div>
+          <div className="max-h-64 overflow-auto p-1.5">
+            {mavericks.length === 0 ? (
+              <p className="px-3 py-4 text-center text-sm text-slate-500">No Mavericks registered yet.</p>
+            ) : filtered.length === 0 ? (
+              <p className="px-3 py-4 text-center text-sm text-slate-500">No matches.</p>
+            ) : (
+              filtered.map((m) => {
+                const isSelected = m.id === selected;
+                return (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => { onSelect(m); setOpen(false); setQ(''); }}
+                    className={cn(
+                      'flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left transition-colors',
+                      isSelected ? 'bg-electric-500/15' : 'hover:bg-white/5'
+                    )}
+                  >
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-electric-gradient text-[11px] font-bold text-white">
+                      {m.name.split(' ').map((n) => n[0]).join('')}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-medium text-white">{m.name}</span>
+                      <span className="block truncate text-xs text-slate-500">{m.email} · {m.department}</span>
+                    </span>
+                    {isSelected && <Check className="h-4 w-4 shrink-0 text-electric-300" />}
+                  </button>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

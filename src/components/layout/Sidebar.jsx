@@ -14,6 +14,7 @@ function NavLinks({ items, onNavigate }) {
           key={item.to}
           to={item.to}
           onClick={onNavigate}
+          data-tour={item.to}
           className={({ isActive }) =>
             cn(
               'group relative flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium transition-all',
@@ -28,7 +29,7 @@ function NavLinks({ items, onNavigate }) {
               {isActive && (
                 <motion.span
                   layoutId="nav-active"
-                  className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-electric-gradient shadow-glow-sm"
+                  className="absolute inset-y-2 left-0 w-1 rounded-r-full bg-electric-gradient shadow-glow-sm"
                 />
               )}
               <item.icon className={cn('h-4.5 w-4.5 shrink-0', isActive && 'text-electric-300')} />

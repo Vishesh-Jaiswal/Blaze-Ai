@@ -126,7 +126,7 @@ const CertificatePreview = forwardRef(function CertificatePreview(
           </div>
           <div className="flex flex-col items-center gap-1">
             <div className="rounded-lg bg-white p-1.5">
-              <QRCode value={id} size={compact ? 52 : 64} />
+              <QRCode certId={id} size={compact ? 52 : 64} />
             </div>
             <p className="text-[9px] text-slate-500">Scan to verify</p>
           </div>

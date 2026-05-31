@@ -66,6 +66,43 @@ export function generateHash(input, length = 64) {
   return out;
 }
 
+/**
+ * Real SHA-256 hash via Web Crypto. Returns a 64-char lowercase hex string.
+ * Anyone (verifier, client, recruiter) can recompute this from a cert's
+ * canonical fields and compare to detect tampering.
+ */
+export async function sha256(text) {
+  const buf = new TextEncoder().encode(String(text));
+  const digest = await crypto.subtle.digest('SHA-256', buf);
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+/**
+ * Canonical serialization of a cert for hashing. Order is fixed and
+ * deliberately excludes mutable fields (verifications counter, hash itself).
+ */
+export function canonicalCertPayload(cert) {
+  return [
+    cert.id,
+    cert.recipientId || '',
+    cert.recipientName || '',
+    cert.course || '',
+    cert.department || '',
+    String(cert.score ?? ''),
+    String(cert.learningHours ?? ''),
+    cert.issuedAt || '',
+    cert.issuedBy || '',
+    cert.templateId || '',
+  ].join('|');
+}
+
+/** Compute the canonical SHA-256 hash for a certificate, prefixed with 0x. */
+export async function computeCertHash(cert) {
+  return '0x' + (await sha256(canonicalCertPayload(cert)));
+}
+
 /** Generate a human-friendly certificate ID, e.g. HEX-MAV-2026-8F3A1C. */
 export function generateCertificateId() {
   const year = new Date().getFullYear();

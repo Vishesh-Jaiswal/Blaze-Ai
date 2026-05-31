@@ -51,14 +51,51 @@ export async function login({ email, password }) {
   const users = loadUsers();
   const user = users.find((u) => u.email.toLowerCase() === email.toLowerCase().trim());
   if (!user) throw new Error('No account found for that email.');
-  // Demo mode: accept the seeded password, or any password for seeded demo accounts.
-  if (user.password && password !== user.password && !DEMO_USERS.some((d) => d.email === user.email)) {
+
+  // Demo convenience: accept any password ONLY while a seeded account still
+  // has its untouched seed password. Once the user changes their password,
+  // strict matching kicks in for everyone.
+  const seedDefault = DEMO_USERS.find((d) => d.email.toLowerCase() === user.email.toLowerCase())?.password;
+  const isUnchangedDemo = Boolean(seedDefault) && user.password === seedDefault;
+
+  if (user.password && !isUnchangedDemo && password !== user.password) {
     throw new Error('Incorrect password. Please try again.');
   }
+
   const token = mintToken(user);
   const session = { token, user: sanitize(user), issuedAt: Date.now() };
   localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
   return session;
+}
+
+/**
+ * Change the password for a user. Validates the current password (using the
+ * same demo-bypass rule as login) and writes the new one to the mock DB.
+ */
+export async function updatePassword({ email, currentPassword, newPassword }) {
+  await delay(700);
+  const users = loadUsers();
+  const idx = users.findIndex((u) => u.email.toLowerCase() === email.toLowerCase().trim());
+  if (idx === -1) throw new Error('Account not found.');
+  const user = users[idx];
+
+  const seedDefault = DEMO_USERS.find((d) => d.email.toLowerCase() === user.email.toLowerCase())?.password;
+  const isUnchangedDemo = Boolean(seedDefault) && user.password === seedDefault;
+
+  if (user.password && !isUnchangedDemo && currentPassword !== user.password) {
+    throw new Error('Current password is incorrect.');
+  }
+  if (!newPassword || newPassword.length < 8) {
+    throw new Error('New password must be at least 8 characters.');
+  }
+  if (newPassword === user.password) {
+    throw new Error('New password must be different from the current one.');
+  }
+
+  const updated = { ...user, password: newPassword };
+  users[idx] = updated;
+  saveUsers(users);
+  return { updated: true };
 }
 
 export async function signup({ name, email, password, role, department }) {
@@ -79,6 +116,8 @@ export async function signup({ name, email, password, role, department }) {
     avatar: null,
   };
   saveUsers([...users, newUser]);
+  // Flag the new account for the onboarding tour on first login.
+  try { localStorage.setItem(`mc.tour.${newUser.id}`, 'pending'); } catch (_) {}
   return { user: sanitize(newUser) };
 }
 
@@ -105,7 +144,41 @@ export async function requestPasswordReset(email) {
   if (!users.some((u) => u.email.toLowerCase() === email.toLowerCase().trim())) {
     throw new Error('No account found for that email.');
   }
-  return { sent: true };
+  // Mint an OTP for the reset flow; the dev code surfaces in the page toast.
+  const code = String(Math.floor(100000 + Math.random() * 900000));
+  sessionStorage.setItem(`mc.otp.${email}`, code);
+  return { sent: true, devCode: code };
+}
+
+/**
+ * Verify the OTP and set a new password in one step. Used by the
+ * forgot-password reset flow.
+ */
+export async function resetPasswordWithOtp({ email, code, newPassword }) {
+  await delay(900);
+  const expected = sessionStorage.getItem(`mc.otp.${email}`);
+  if (!expected) throw new Error('Verification code expired. Please request a new one.');
+  if (String(code) !== expected) throw new Error('Invalid verification code.');
+
+  const users = loadUsers();
+  const idx = users.findIndex((u) => u.email.toLowerCase() === email.toLowerCase().trim());
+  if (idx === -1) throw new Error('Account not found.');
+  if (!newPassword || newPassword.length < 8) {
+    throw new Error('New password must be at least 8 characters.');
+  }
+
+  users[idx] = { ...users[idx], password: newPassword };
+  saveUsers(users);
+  sessionStorage.removeItem(`mc.otp.${email}`);
+  return { success: true };
+}
+
+/** Return all users (sanitized — no passwords). Optional `role` filter. */
+export async function listUsers({ role } = {}) {
+  await delay(200);
+  let users = loadUsers();
+  if (role) users = users.filter((u) => u.role === role);
+  return users.map(sanitize);
 }
 
 export function getSession() {

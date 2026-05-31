@@ -13,6 +13,7 @@ import Landing from '@/pages/Landing';
 import Login from '@/pages/auth/Login';
 import Signup from '@/pages/auth/Signup';
 import ForgotPassword from '@/pages/auth/ForgotPassword';
+import ResetPassword from '@/pages/auth/ResetPassword';
 import OtpVerification from '@/pages/auth/OtpVerification';
 import PublicVerify from '@/pages/PublicVerify';
 import NotFound from '@/pages/NotFound';
@@ -52,6 +53,7 @@ export default function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/verify-otp" element={<OtpVerification />} />
         <Route path="/verify" element={<PublicVerify />} />
 

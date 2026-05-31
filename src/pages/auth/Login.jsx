@@ -9,6 +9,8 @@ import { ROLE_META } from '@/config/roles';
 import { useToast } from '@/store/toastStore';
 import { DEMO_USERS } from '@/data/mockData';
 
+const REMEMBER_KEY = 'mc.remember.email';
+
 export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -16,7 +18,12 @@ export default function Login() {
   const status = useAuthStore((s) => s.status);
   const toast = useToast();
 
-  const [form, setForm] = useState({ email: '', password: '' });
+  // Pre-fill from the last "remembered" non-demo login.
+  const initialEmail = (() => {
+    try { return localStorage.getItem(REMEMBER_KEY) || ''; } catch (_) { return ''; }
+  })();
+  const [form, setForm] = useState({ email: initialEmail, password: '' });
+  const [remember, setRemember] = useState(Boolean(initialEmail));
   const [error, setError] = useState('');
 
   const submit = async (e) => {
@@ -24,6 +31,13 @@ export default function Login() {
     setError('');
     try {
       const user = await login(form);
+      // Remember the email for the next visit — but only for real accounts.
+      // Demo logins shouldn't pollute the prefill for the next user demoing the app.
+      const isDemo = DEMO_USERS.some((d) => d.email.toLowerCase() === user.email.toLowerCase());
+      try {
+        if (remember && !isDemo) localStorage.setItem(REMEMBER_KEY, user.email);
+        else localStorage.removeItem(REMEMBER_KEY);
+      } catch (_) {}
       toast.success(`Welcome back, ${user.name.split(' ')[0]}!`);
       const dest = location.state?.from?.pathname || ROLE_META[user.role]?.home || '/app';
       navigate(dest, { replace: true });
@@ -72,7 +86,12 @@ export default function Login() {
 
         <div className="flex items-center justify-between text-sm">
           <label className="flex items-center gap-2 text-slate-400">
-            <input type="checkbox" defaultChecked className="h-4 w-4 rounded border-white/20 bg-white/5 accent-electric-500" />
+            <input
+              type="checkbox"
+              checked={remember}
+              onChange={(e) => setRemember(e.target.checked)}
+              className="h-4 w-4 rounded border-white/20 bg-white/5 accent-electric-500"
+            />
             Remember me
           </label>
           <Link to="/forgot-password" className="text-electric-300 hover:text-electric-200">

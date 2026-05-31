@@ -157,6 +157,7 @@ function buildCertificates() {
       department: dept,
       score,
       duration: `${6 + (i % 8)} weeks`,
+      learningHours: 20 + ((i * 7) % 40), // 20–60 hours range
       skills: SKILL_BANK.slice((i * 2) % 10, ((i * 2) % 10) + 4),
       status,
       issuedAt,
@@ -191,34 +192,13 @@ export const SEED_APPROVALS = SEED_CERTIFICATES.filter((c) => c.status === 'pend
 );
 
 /**
- * Maverick-submitted certificate requests awaiting admin review.
- * `type` is 'internal' (Hexaware assessment) or 'external' (3rd-party cert with proof docs).
- * These seed the admin Pending Approvals queue and a Maverick's own status tracker.
+ * Maverick-submitted external credential requests awaiting admin review.
+ * Internal Hexaware certificates are auto-issued by HR/L&D via the AI Generator,
+ * so every submission here is an external (3rd-party) credential with proof docs.
  */
 export const SEED_SUBMISSIONS = [
   {
     id: 'SUB-2026-0001',
-    type: 'internal',
-    submittedById: 'u-maverick',
-    submittedByName: 'Aarav Sharma',
-    submittedByEmail: 'maverick@hexaware.com',
-    department: 'Cloud Engineering',
-    certificateName: 'Cloud Foundations on AWS',
-    issuingOrg: 'Hexaware Mavericks Academy',
-    score: 92,
-    completionDate: '2026-05-18',
-    remarks: 'Completed all six assessment modules with distinction.',
-    skills: ['AWS', 'Cloud', 'Terraform'],
-    documents: [],
-    status: 'pending',
-    submittedAt: new Date(Date.now() - 2 * 3600000).toISOString(),
-    reviewedAt: null,
-    reviewedBy: null,
-    adminComment: '',
-    issuedCertId: null,
-  },
-  {
-    id: 'SUB-2026-0002',
     type: 'external',
     submittedById: 'u-maverick',
     submittedByName: 'Aarav Sharma',
@@ -235,6 +215,29 @@ export const SEED_SUBMISSIONS = [
     ],
     status: 'pending',
     submittedAt: new Date(Date.now() - 26 * 3600000).toISOString(),
+    reviewedAt: null,
+    reviewedBy: null,
+    adminComment: '',
+    issuedCertId: null,
+  },
+  {
+    id: 'SUB-2026-0002',
+    type: 'external',
+    submittedById: 'u-1002',
+    submittedByName: 'Diya Patel',
+    submittedByEmail: 'diya.patel@hexaware.com',
+    department: 'DevOps & SRE',
+    certificateName: 'Certified Kubernetes Administrator',
+    issuingOrg: 'The Linux Foundation (CNCF)',
+    score: 92,
+    completionDate: '2026-05-12',
+    remarks: 'Hands-on CKA exam — covered scheduling, networking and storage.',
+    skills: ['Kubernetes', 'Docker', 'CI/CD'],
+    documents: [
+      { name: 'cka-certificate.pdf', size: 312_400, type: 'application/pdf', dataUrl: null },
+    ],
+    status: 'pending',
+    submittedAt: new Date(Date.now() - 6 * 3600000).toISOString(),
     reviewedAt: null,
     reviewedBy: null,
     adminComment: '',
@@ -265,23 +268,48 @@ export const SEED_SUBMISSIONS = [
   },
   {
     id: 'SUB-2026-0004',
-    type: 'internal',
+    type: 'external',
     submittedById: 'u-1005',
     submittedByName: 'Arjun Kapoor',
     submittedByEmail: 'arjun.kapoor@hexaware.com',
     department: 'Cybersecurity',
-    certificateName: 'Cybersecurity Essentials',
-    issuingOrg: 'Hexaware Mavericks Academy',
-    score: 64,
+    certificateName: 'CompTIA Security+',
+    issuingOrg: 'CompTIA',
+    score: 720,
     completionDate: '2026-05-10',
-    remarks: '',
+    remarks: 'Pass mark 750 — narrowly missed.',
     skills: ['Security'],
-    documents: [],
+    documents: [
+      { name: 'sec-plus-scoresheet.pdf', size: 184_000, type: 'application/pdf', dataUrl: null },
+    ],
     status: 'rejected',
     submittedAt: new Date(Date.now() - 6 * 86400000).toISOString(),
     reviewedAt: new Date(Date.now() - 5 * 86400000).toISOString(),
     reviewedBy: 'Priya Nair',
-    adminComment: 'Assessment score is below the 70% pass threshold. Please retake the final assessment and resubmit.',
+    adminComment: 'Score is below the issuing-body pass mark (750). Please retake the exam and resubmit the updated score sheet.',
+    issuedCertId: null,
+  },
+  {
+    id: 'SUB-2026-0005',
+    type: 'external',
+    submittedById: 'u-1006',
+    submittedByName: 'Ishaan Verma',
+    submittedByEmail: 'ishaan.verma@hexaware.com',
+    department: 'Full-Stack Development',
+    certificateName: 'Meta Front-End Developer Professional Certificate',
+    issuingOrg: 'Meta / Coursera',
+    score: 95,
+    completionDate: '2026-05-20',
+    remarks: '9-course specialisation — capstone project hosted on GitHub.',
+    skills: ['React', 'TypeScript', 'Node.js'],
+    documents: [
+      { name: 'meta-frontend-cert.png', size: 388_000, type: 'image/png', dataUrl: null },
+    ],
+    status: 'pending',
+    submittedAt: new Date(Date.now() - 18 * 3600000).toISOString(),
+    reviewedAt: null,
+    reviewedBy: null,
+    adminComment: '',
     issuedCertId: null,
   },
 ];
@@ -334,15 +362,20 @@ export const ANALYTICS = {
 };
 
 /** Leaderboard data. */
-export const LEADERBOARD = NAMES.map((name, i) => ({
-  rank: i + 1,
-  name,
-  department: pick(DEPARTMENTS, i),
-  certificates: 12 - Math.floor(i / 2),
-  points: 4800 - i * 215,
-  streak: Math.max(2, 18 - i),
-  trend: i % 3 === 0 ? 'up' : i % 3 === 1 ? 'flat' : 'down',
-}))
+export const LEADERBOARD = NAMES.map((name, i) => {
+  const certs = 12 - Math.floor(i / 2);
+  const learningHours = certs * 40 - (i * 7) % 50; // ~40h per cert, slight noise
+  return {
+    rank: i + 1,
+    name,
+    department: pick(DEPARTMENTS, i),
+    certificates: certs,
+    learningHours,
+    points: certs * 100 + learningHours * 5 + Math.max(2, 18 - i) * 5,
+    streak: Math.max(2, 18 - i),
+    trend: i % 3 === 0 ? 'up' : i % 3 === 1 ? 'flat' : 'down',
+  };
+})
   .sort((a, b) => b.points - a.points)
   .map((row, i) => ({ ...row, rank: i + 1 }));
 

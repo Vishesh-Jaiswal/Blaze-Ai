@@ -9,7 +9,7 @@ import CertificateModal from '@/components/certificate/CertificateModal';
 import { listCertificates } from '@/services/certificateService';
 import { useAuthStore } from '@/store/authStore';
 import { ROLES } from '@/config/roles';
-import { SEED_CERTIFICATES } from '@/data/mockData';
+import { SEED_CERTIFICATES, DEMO_USERS } from '@/data/mockData';
 
 const STATUS_OPTIONS = [
   { value: 'all', label: 'All statuses' },
@@ -26,17 +26,23 @@ export default function MyCertificates() {
   const [status, setStatus] = useState('all');
 
   const isMaverick = user.role === ROLES.MAVERICK;
+  const isDemoUser = DEMO_USERS.some((u) => u.email === user.email);
 
   useEffect(() => {
     listCertificates().then((list) => {
       if (isMaverick) {
-        const mine = list.filter((c) => c.recipientName === user.name);
-        setAll(mine.length ? mine : SEED_CERTIFICATES.slice(0, 6).map((c) => ({ ...c, recipientName: user.name })));
+        const mine = list.filter((c) => c.recipientName === user.name || c.recipientId === user.id);
+        if (mine.length) return setAll(mine);
+        if (isDemoUser) {
+          setAll(SEED_CERTIFICATES.slice(0, 6).map((c) => ({ ...c, recipientName: user.name })));
+        } else {
+          setAll([]);
+        }
       } else {
         setAll(list);
       }
     });
-  }, [user.name, isMaverick]);
+  }, [user.id, user.name, isMaverick, isDemoUser]);
 
   const filtered = useMemo(() => {
     if (!all) return [];
@@ -60,7 +66,7 @@ export default function MyCertificates() {
         description={isMaverick ? 'Every achievement you have earned, ready to download and share.' : 'The full credential registry across all Mavericks.'}
       />
 
-      <GlassCard className="mb-6 flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
+      <GlassCard className="relative z-20 mb-6 flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
         <div className="relative flex-1">
           <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
           <input

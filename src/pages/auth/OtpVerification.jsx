@@ -20,10 +20,15 @@ export default function OtpVerification() {
   const [error, setError] = useState('');
   const [cooldown, setCooldown] = useState(0);
   const inputs = useRef([]);
+  const sentRef = useRef(false);
 
   // Send an OTP on mount and surface the dev code via toast (demo only).
+  // Guarded with a ref so React 18 strict-mode's double-invoke doesn't issue
+  // (and overwrite) two codes back-to-back.
   useEffect(() => {
+    if (sentRef.current) return;
     if (email && email !== 'your email') {
+      sentRef.current = true;
       requestOtp(email).then((r) => {
         toast.info(`Demo code: ${r.devCode}`, { duration: 8000, title: 'OTP sent' });
         setCooldown(30);

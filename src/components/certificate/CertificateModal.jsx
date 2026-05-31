@@ -1,10 +1,11 @@
-import { Download, ShieldCheck, Hash, Copy, ScanLine } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { Download, FileText, ShieldCheck, Hash, Copy, ScanLine } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Modal from '@/components/ui/Modal';
 import Button from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
 import CertificatePreview from './CertificatePreview';
-import { downloadCertificateHtml } from '@/lib/certificateExport';
+import { viewCertificatePdf, downloadCertificatePdf } from '@/lib/certificateExport';
 import { useToast } from '@/store/toastStore';
 import { formatDate } from '@/lib/utils';
 
@@ -13,6 +14,8 @@ const STATUS_TONE = { issued: 'success', pending: 'warning', revoked: 'danger' }
 export default function CertificateModal({ cert, open, onClose }) {
   const toast = useToast();
   const navigate = useNavigate();
+  const previewRef = useRef(null);
+  const [busy, setBusy] = useState(null); // 'view' | 'download' | null
   if (!cert) return null;
 
   const copyHash = () => {
@@ -20,10 +23,35 @@ export default function CertificateModal({ cert, open, onClose }) {
     toast.success('Hash copied to clipboard');
   };
 
+  const handleView = async () => {
+    if (busy) return;
+    setBusy('view');
+    try {
+      await viewCertificatePdf(previewRef.current, cert);
+    } catch (err) {
+      toast.error('Could not open PDF. Please try again.');
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const handleDownload = async () => {
+    if (busy) return;
+    setBusy('download');
+    try {
+      await downloadCertificatePdf(previewRef.current, cert);
+      toast.success('PDF downloaded');
+    } catch (err) {
+      toast.error('Could not generate PDF. Please try again.');
+    } finally {
+      setBusy(null);
+    }
+  };
+
   return (
     <Modal open={open} onClose={onClose} title="Certificate details" size="xl">
       <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
-        <CertificatePreview cert={cert} />
+        <CertificatePreview ref={previewRef} cert={cert} />
 
         <div className="space-y-4">
           <div className="flex items-center gap-2">
@@ -54,11 +82,14 @@ export default function CertificateModal({ cert, open, onClose }) {
             <ShieldCheck className="h-4 w-4" /> Recorded on the Hexaware verification ledger.
           </div>
 
-          <div className="flex gap-2">
-            <Button icon={Download} className="flex-1" onClick={() => { downloadCertificateHtml(cert); toast.success('Certificate exported — open & print to PDF'); }}>
+          <div className="grid grid-cols-2 gap-2">
+            <Button icon={FileText} loading={busy === 'view'} disabled={!!busy} onClick={handleView}>
+              View PDF
+            </Button>
+            <Button variant="secondary" icon={Download} loading={busy === 'download'} disabled={!!busy} onClick={handleDownload}>
               Download
             </Button>
-            <Button variant="secondary" icon={ScanLine} onClick={() => navigate(`/app/verify?id=${cert.id}`)}>
+            <Button variant="ghost" icon={ScanLine} className="col-span-2" onClick={() => navigate(`/app/verify?id=${cert.id}`)}>
               Verify
             </Button>
           </div>

@@ -1,16 +1,14 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mail, Lock, User, ArrowRight } from 'lucide-react';
+import { Mail, Lock, User, ArrowRight, Sparkles } from 'lucide-react';
 import AuthLayout from './AuthLayout';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 import Select from '@/components/ui/Select';
 import { useAuthStore } from '@/store/authStore';
-import { ROLES, ROLE_META } from '@/config/roles';
+import { ROLES } from '@/config/roles';
 import { DEPARTMENTS } from '@/data/mockData';
 import { useToast } from '@/store/toastStore';
-
-const ROLE_OPTIONS = Object.values(ROLES).map((r) => ({ value: r, label: ROLE_META[r].label }));
 
 export default function Signup() {
   const navigate = useNavigate();
@@ -18,6 +16,8 @@ export default function Signup() {
   const status = useAuthStore((s) => s.status);
   const toast = useToast();
 
+  // Self-signup is always a Maverick account. HR/L&D/Admin accounts are
+  // provisioned by the platform owner; external verifiers don't self-register.
   const [form, setForm] = useState({
     name: '',
     email: '',
@@ -44,8 +44,8 @@ export default function Signup() {
 
   return (
     <AuthLayout
-      title="Create your account"
-      subtitle="Join the Mavericks credential ecosystem."
+      title="Create your Maverick account"
+      subtitle="Join the Hexaware Mavericks credential ecosystem."
       footer={
         <>
           Already have an account?{' '}
@@ -56,6 +56,12 @@ export default function Signup() {
       }
     >
       <form onSubmit={submit} className="space-y-4">
+        <div className="flex items-start gap-3 rounded-xl border border-electric-400/20 bg-electric-500/10 p-3 text-xs text-electric-200">
+          <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          <span>
+            Self-signup creates a Maverick account. HR, L&amp;D and Admin accounts are provisioned by your platform owner.
+          </span>
+        </div>
         <Input
           label="Full name"
           icon={User}
@@ -74,10 +80,7 @@ export default function Signup() {
           required
           error={error}
         />
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Select label="Role" value={form.role} onChange={set('role')} options={ROLE_OPTIONS} />
-          <Select label="Department" value={form.department} onChange={set('department')} options={DEPARTMENTS} />
-        </div>
+        <Select label="Department" value={form.department} onChange={set('department')} options={DEPARTMENTS} />
         <Input
           label="Password"
           icon={Lock}
