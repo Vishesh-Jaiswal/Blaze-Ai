@@ -43,7 +43,7 @@ export default function Select({ label, value, onChange, options = [], placehold
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -8, scale: 0.98 }}
               transition={{ duration: 0.16 }}
-              className="glass-strong absolute z-30 mt-2 max-h-60 w-full overflow-auto rounded-xl p-1.5"
+              className="absolute z-30 mt-2 max-h-60 w-full overflow-auto rounded-xl border border-white/10 bg-ink-900 p-1.5 shadow-2xl shadow-black/60"
             >
               {normalized.map((o) => (
                 <li key={o.value}>
