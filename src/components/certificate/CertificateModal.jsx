@@ -56,7 +56,6 @@ export default function CertificateModal({ cert, open, onClose }) {
         <div className="space-y-4">
           <div className="flex items-center gap-2">
             <Badge tone={STATUS_TONE[cert.status] || 'neutral'} dot>{cert.status}</Badge>
-            <Badge tone="electric">{cert.verifications ?? 0} verifications</Badge>
           </div>
 
           <div className="space-y-3 rounded-xl border border-white/10 bg-white/[0.03] p-4 text-sm">

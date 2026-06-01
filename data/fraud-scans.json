@@ -1,0 +1,332 @@
+[
+    {
+        "id": "scan-1780297871538-872",
+        "target": "HEX-MAV-2026-3E8",
+        "fraudProbability": 3,
+        "confidence": 97,
+        "riskLevel": "low",
+        "durationMs": 1606,
+        "failedSignals": [],
+        "at": 1780297871538
+    },
+    {
+        "id": "scan-1780297571123-968",
+        "target": "HEX-MAV-2026-1A2B",
+        "fraudProbability": 92,
+        "confidence": 8,
+        "riskLevel": "high",
+        "durationMs": 1611,
+        "failedSignals": [
+            "registry",
+            "hash",
+            "issuer",
+            "status",
+            "integrity"
+        ],
+        "at": 1780297571123
+    },
+    {
+        "id": "scan-1780297561321-786",
+        "target": "forged-copy-cert",
+        "fraudProbability": 92,
+        "confidence": 8,
+        "riskLevel": "high",
+        "durationMs": 1605,
+        "failedSignals": [
+            "registry",
+            "hash",
+            "issuer",
+            "status",
+            "integrity"
+        ],
+        "at": 1780297561321
+    },
+    {
+        "id": "scan-1780297427955-741",
+        "target": "HEX-MAV-2026-1A2B",
+        "fraudProbability": 92,
+        "confidence": 8,
+        "riskLevel": "high",
+        "durationMs": 1617,
+        "failedSignals": [
+            "registry",
+            "hash",
+            "issuer",
+            "status",
+            "integrity"
+        ],
+        "at": 1780297427955
+    },
+    {
+        "id": "scan-1780297181282-968",
+        "target": "HEX-MAV-2026-1A2B",
+        "fraudProbability": 92,
+        "confidence": 8,
+        "riskLevel": "high",
+        "durationMs": 1609,
+        "failedSignals": [
+            "registry",
+            "hash",
+            "issuer",
+            "status",
+            "integrity"
+        ],
+        "at": 1780297181282
+    },
+    {
+        "id": "scan-1780297175263-38",
+        "target": "forged-copy-cert",
+        "fraudProbability": 92,
+        "confidence": 8,
+        "riskLevel": "high",
+        "durationMs": 1635,
+        "failedSignals": [
+            "registry",
+            "hash",
+            "issuer",
+            "status",
+            "integrity"
+        ],
+        "at": 1780297175263
+    },
+    {
+        "id": "scan-1780297166743-966",
+        "target": "HEX-MAV-2026-1A2B",
+        "fraudProbability": 92,
+        "confidence": 8,
+        "riskLevel": "high",
+        "durationMs": 2136,
+        "failedSignals": [
+            "registry",
+            "hash",
+            "issuer",
+            "status",
+            "integrity"
+        ],
+        "at": 1780297166743
+    },
+    {
+        "id": "seed-clean-0",
+        "target": "HEX-MAV-2026-3E8",
+        "fraudProbability": 3,
+        "confidence": 97,
+        "riskLevel": "low",
+        "durationMs": 1400,
+        "failedSignals": [],
+        "at": 1780297149014
+    },
+    {
+        "id": "seed-clean-1",
+        "target": "HEX-MAV-2026-40D",
+        "fraudProbability": 3,
+        "confidence": 97,
+        "riskLevel": "low",
+        "durationMs": 1453,
+        "failedSignals": [],
+        "at": 1780219388877
+    },
+    {
+        "id": "seed-fake-0",
+        "target": "HEX-MAV-2026-FAKE01",
+        "fraudProbability": 92,
+        "confidence": 8,
+        "riskLevel": "high",
+        "durationMs": 1500,
+        "failedSignals": [
+            "registry",
+            "hash",
+            "issuer",
+            "status",
+            "integrity"
+        ],
+        "at": 1780210749014
+    },
+    {
+        "id": "seed-clean-2",
+        "target": "HEX-MAV-2026-432",
+        "fraudProbability": 3,
+        "confidence": 97,
+        "riskLevel": "low",
+        "durationMs": 1506,
+        "failedSignals": [],
+        "at": 1780141628740
+    },
+    {
+        "id": "seed-clean-3",
+        "target": "HEX-MAV-2026-457",
+        "fraudProbability": 3,
+        "confidence": 97,
+        "riskLevel": "low",
+        "durationMs": 1559,
+        "failedSignals": [],
+        "at": 1780063868603
+    },
+    {
+        "id": "seed-tamper-0",
+        "target": "HEX-MAV-2026-432",
+        "fraudProbability": 30,
+        "confidence": 70,
+        "riskLevel": "medium",
+        "durationMs": 1600,
+        "failedSignals": [
+            "hash"
+        ],
+        "at": 1780037949014
+    },
+    {
+        "id": "seed-fake-1",
+        "target": "HEX-MAV-2026-FAKE02",
+        "fraudProbability": 92,
+        "confidence": 8,
+        "riskLevel": "high",
+        "durationMs": 1560,
+        "failedSignals": [
+            "registry",
+            "hash",
+            "issuer",
+            "status",
+            "integrity"
+        ],
+        "at": 1780037948814
+    },
+    {
+        "id": "seed-clean-4",
+        "target": "HEX-MAV-2026-47C",
+        "fraudProbability": 3,
+        "confidence": 97,
+        "riskLevel": "low",
+        "durationMs": 1612,
+        "failedSignals": [],
+        "at": 1779986108466
+    },
+    {
+        "id": "seed-clean-5",
+        "target": "HEX-MAV-2026-3E8",
+        "fraudProbability": 3,
+        "confidence": 97,
+        "riskLevel": "low",
+        "durationMs": 1665,
+        "failedSignals": [],
+        "at": 1779908348329
+    },
+    {
+        "id": "seed-tamper-1",
+        "target": "HEX-MAV-2026-457",
+        "fraudProbability": 30,
+        "confidence": 70,
+        "riskLevel": "medium",
+        "durationMs": 1600,
+        "failedSignals": [
+            "hash"
+        ],
+        "at": 1779865149014
+    },
+    {
+        "id": "seed-fake-2",
+        "target": "forged-copy-2026",
+        "fraudProbability": 92,
+        "confidence": 8,
+        "riskLevel": "high",
+        "durationMs": 1620,
+        "failedSignals": [
+            "registry",
+            "hash",
+            "issuer",
+            "status",
+            "integrity"
+        ],
+        "at": 1779865148614
+    },
+    {
+        "id": "seed-clean-6",
+        "target": "HEX-MAV-2026-40D",
+        "fraudProbability": 3,
+        "confidence": 97,
+        "riskLevel": "low",
+        "durationMs": 1718,
+        "failedSignals": [],
+        "at": 1779830588192
+    },
+    {
+        "id": "seed-revoked-0",
+        "target": "HEX-MAV-2026-3E8",
+        "fraudProbability": 14,
+        "confidence": 86,
+        "riskLevel": "low",
+        "durationMs": 1500,
+        "failedSignals": [
+            "status"
+        ],
+        "at": 1779778749014
+    },
+    {
+        "id": "seed-clean-7",
+        "target": "HEX-MAV-2026-432",
+        "fraudProbability": 3,
+        "confidence": 97,
+        "riskLevel": "low",
+        "durationMs": 1771,
+        "failedSignals": [],
+        "at": 1779752828055
+    },
+    {
+        "id": "seed-clean-8",
+        "target": "HEX-MAV-2026-457",
+        "fraudProbability": 3,
+        "confidence": 97,
+        "riskLevel": "low",
+        "durationMs": 1824,
+        "failedSignals": [],
+        "at": 1779675067918
+    },
+    {
+        "id": "seed-clean-9",
+        "target": "HEX-MAV-2026-47C",
+        "fraudProbability": 3,
+        "confidence": 97,
+        "riskLevel": "low",
+        "durationMs": 1877,
+        "failedSignals": [],
+        "at": 1779597307781
+    },
+    {
+        "id": "seed-clean-10",
+        "target": "HEX-MAV-2026-3E8",
+        "fraudProbability": 3,
+        "confidence": 97,
+        "riskLevel": "low",
+        "durationMs": 1930,
+        "failedSignals": [],
+        "at": 1779519547644
+    },
+    {
+        "id": "seed-clean-11",
+        "target": "HEX-MAV-2026-40D",
+        "fraudProbability": 3,
+        "confidence": 97,
+        "riskLevel": "low",
+        "durationMs": 1983,
+        "failedSignals": [],
+        "at": 1779441787507
+    },
+    {
+        "id": "seed-clean-12",
+        "target": "HEX-MAV-2026-432",
+        "fraudProbability": 3,
+        "confidence": 97,
+        "riskLevel": "low",
+        "durationMs": 2036,
+        "failedSignals": [],
+        "at": 1779364027370
+    },
+    {
+        "id": "seed-clean-13",
+        "target": "HEX-MAV-2026-457",
+        "fraudProbability": 3,
+        "confidence": 97,
+        "riskLevel": "low",
+        "durationMs": 2089,
+        "failedSignals": [],
+        "at": 1779286267233
+    }
+]

@@ -1,0 +1,79 @@
+[
+    {
+        "id": "u-maverick",
+        "name": "Aarav Sharma",
+        "email": "maverick@hexaware.com",
+        "password": "demo1234",
+        "role": "maverick",
+        "department": "Cloud Engineering",
+        "title": "Maverick — Batch 2026",
+        "joinedAt": "2026-01-12",
+        "avatar": null
+    },
+    {
+        "id": "u-lnd",
+        "name": "Rohan Mehta",
+        "email": "lnd@hexaware.com",
+        "password": "demo1234",
+        "role": "lnd_manager",
+        "department": "Learning & Development",
+        "title": "L&D Program Manager",
+        "joinedAt": "2021-02-18",
+        "avatar": null
+    },
+    {
+        "id": "u-mptp8iyy",
+        "name": "Vishesh Jaiswal",
+        "email": "visheshjaiswal3@gmail.com",
+        "password": "Madagasger@123",
+        "role": "maverick",
+        "department": "Full-Stack Development",
+        "title": "Maverick — Batch 2026",
+        "joinedAt": "2026-05-31",
+        "avatar": null
+    },
+    {
+        "id": "u-mptpmgea",
+        "name": "Deal Guy",
+        "email": "dealimthereal@gmail.com",
+        "password": "visheshjaiswal3@gmail.com",
+        "role": "maverick",
+        "department": "Cloud Engineering",
+        "title": "Maverick — Batch 2026",
+        "joinedAt": "2026-05-31",
+        "avatar": null
+    },
+    {
+        "id": "u-mptpx30u",
+        "name": "Demo Guy 2 ",
+        "email": "dealimthereal1@gmail.com",
+        "password": "Madagasger@123",
+        "role": "maverick",
+        "department": "Cloud Engineering",
+        "title": "Maverick — Batch 2026",
+        "joinedAt": "2026-05-31",
+        "avatar": null
+    },
+    {
+        "id": "u-mptrnpwa",
+        "name": "Vishesh me",
+        "email": "visheshjaiswal32@gmail.com",
+        "password": "Madagasger@123",
+        "role": "maverick",
+        "department": "Data & AI",
+        "title": "Maverick — Batch 2026",
+        "joinedAt": "2026-05-31",
+        "avatar": null
+    },
+    {
+        "id": "u-mpuwkw7d",
+        "name": "Vishesh",
+        "email": "visheshj@gmail.com",
+        "password": "Madagasger@1",
+        "role": "maverick",
+        "department": "Cloud Engineering",
+        "title": "Maverick — Batch 2026",
+        "joinedAt": "2026-06-01",
+        "avatar": null
+    }
+]

@@ -25,6 +25,7 @@ const CertificatePreview = forwardRef(function CertificatePreview(
     issuedAt,
     manager = 'Program Manager',
     department = 'Hexaware Mavericks',
+    backgroundImage,
   } = cert;
 
   return (
@@ -33,22 +34,47 @@ const CertificatePreview = forwardRef(function CertificatePreview(
       className={`relative aspect-[1.414/1] w-full overflow-hidden rounded-2xl bg-ink-800 ${className}`}
       style={{ boxShadow: '0 20px 60px rgba(0,0,0,0.5)' }}
     >
-      {/* Accent gradient header band */}
-      <div className="absolute inset-x-0 top-0 h-1.5" style={{ background: tpl.gradient }} />
-      {/* Corner glow */}
-      <div
-        className="absolute -right-20 -top-20 h-56 w-56 rounded-full blur-3xl opacity-40"
-        style={{ background: tpl.accent }}
-      />
-      <div
-        className="absolute -bottom-24 -left-16 h-56 w-56 rounded-full blur-3xl opacity-30"
-        style={{ background: tpl.accent }}
-      />
-      {/* Watermark seal */}
-      <Award
-        className="absolute right-6 top-1/2 h-64 w-64 -translate-y-1/2 opacity-[0.04]"
-        style={{ color: tpl.accent }}
-      />
+      {/* Custom background image — when present, suppress the template's
+         color contributions (gradient band, corner glow orbs, watermark)
+         so the image renders clean, and use a neutral dark vignette tuned
+         only for text contrast at the corners. */}
+      {backgroundImage ? (
+        <>
+          <img
+            src={backgroundImage}
+            alt=""
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+          {/* Neutral edge-darkening vignette — strongest where text sits
+             (top-left brand, bottom footer) and softest at center. */}
+          <div
+            className="absolute inset-0"
+            style={{
+              background:
+                'radial-gradient(ellipse at center, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.45) 70%, rgba(0,0,0,0.65) 100%)',
+            }}
+          />
+        </>
+      ) : (
+        <>
+          {/* Accent gradient header band */}
+          <div className="absolute inset-x-0 top-0 h-1.5" style={{ background: tpl.gradient }} />
+          {/* Corner glows */}
+          <div
+            className="absolute -right-20 -top-20 h-56 w-56 rounded-full blur-3xl opacity-40"
+            style={{ background: tpl.accent }}
+          />
+          <div
+            className="absolute -bottom-24 -left-16 h-56 w-56 rounded-full blur-3xl opacity-30"
+            style={{ background: tpl.accent }}
+          />
+          {/* Watermark seal */}
+          <Award
+            className="absolute right-6 top-1/2 h-64 w-64 -translate-y-1/2 opacity-[0.04]"
+            style={{ color: tpl.accent }}
+          />
+        </>
+      )}
 
       <div className={`relative flex h-full flex-col ${compact ? 'p-5' : 'p-7 md:p-9'}`}>
         {/* Brand row */}

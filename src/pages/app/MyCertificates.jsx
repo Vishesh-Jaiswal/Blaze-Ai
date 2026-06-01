@@ -29,19 +29,21 @@ export default function MyCertificates() {
   const isDemoUser = DEMO_USERS.some((u) => u.email === user.email);
 
   useEffect(() => {
-    listCertificates().then((list) => {
-      if (isMaverick) {
-        const mine = list.filter((c) => c.recipientName === user.name || c.recipientId === user.id);
-        if (mine.length) return setAll(mine);
-        if (isDemoUser) {
-          setAll(SEED_CERTIFICATES.slice(0, 6).map((c) => ({ ...c, recipientName: user.name })));
+    listCertificates()
+      .then((list) => {
+        if (isMaverick) {
+          const mine = list.filter((c) => c.recipientName === user.name || c.recipientId === user.id);
+          if (mine.length) return setAll(mine);
+          if (isDemoUser) {
+            setAll(SEED_CERTIFICATES.slice(0, 6).map((c) => ({ ...c, recipientName: user.name })));
+          } else {
+            setAll([]);
+          }
         } else {
-          setAll([]);
+          setAll(list);
         }
-      } else {
-        setAll(list);
-      }
-    });
+      })
+      .catch(() => setAll([])); // Empty state on failure instead of perpetual spinner.
   }, [user.id, user.name, isMaverick, isDemoUser]);
 
   const filtered = useMemo(() => {

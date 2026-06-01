@@ -1,3 +1,5 @@
+import { notifyChange } from '@/lib/db';
+
 /**
  * Per-user activity log. localStorage-backed, keyed by user id.
  * Powers:
@@ -35,6 +37,7 @@ function save(userId, events) {
   if (!userId) return;
   try {
     localStorage.setItem(KEY(userId), JSON.stringify(events.slice(0, MAX_EVENTS)));
+    notifyChange('activity');
   } catch (_) {}
 }
 

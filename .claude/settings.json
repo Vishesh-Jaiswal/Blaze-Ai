@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s http://localhost:5173/api/db/users)",
+      "Bash(curl -s -X PUT -H \"Content-Type: application/json\" -d '[{\"id\":\"test-rt\",\"name\":\"Round Trip\"}]' http://localhost:5173/api/db/users -w \"PUT status: %{http_code}\\\\n\")",
+      "Bash(powershell -Command \"Get-Process node -ErrorAction SilentlyContinue | Stop-Process -Force\")"
+    ]
+  }
+}

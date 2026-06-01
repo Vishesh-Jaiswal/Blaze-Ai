@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Sparkles, Wand2, Award, Download, RefreshCw, Check, Plus, X, Brain, Palette, Send, FileText,
+  ImagePlus, Trash2,
 } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
 import GlassCard from '@/components/ui/GlassCard';
@@ -39,7 +40,9 @@ export default function CertificateGenerator() {
     skills: ['React', 'System Design'],
     managerFeedback: '',
     templateId: 'aurora',
+    backgroundImage: null,
   });
+  const bgInputRef = useRef(null);
   const [mavericks, setMavericks] = useState([]);
 
   // Load all registered Mavericks for the recipient dropdown.
@@ -48,6 +51,7 @@ export default function CertificateGenerator() {
   }, []);
   const [summary, setSummary] = useState('');
   const [generating, setGenerating] = useState(false);
+  const [regenCount, setRegenCount] = useState(0);
   const [recommending, setRecommending] = useState(false);
   const [recommendation, setRecommendation] = useState(null);
   const [issued, setIssued] = useState(null);
@@ -86,9 +90,37 @@ export default function CertificateGenerator() {
   };
   const removeSkill = (s) => set('skills')(form.skills.filter((x) => x !== s));
 
+  const handleBackgroundUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!/^image\//.test(file.type)) {
+      toast.error('Pick an image file (PNG / JPG / WEBP).');
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('Image must be under 2 MB.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      set('backgroundImage')(reader.result);
+      toast.success('Background image applied to the certificate.');
+    };
+    reader.onerror = () => toast.error('Could not read that file.');
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  const clearBackground = () => {
+    set('backgroundImage')(null);
+    toast.info('Background image removed.');
+  };
+
   const handleSuggestSkills = async () => {
     const s = await suggestSkills(form.course);
-    set('skills')([...new Set([...form.skills, ...s])].slice(0, 6));
+    // Replace the existing skill list with the AI's fresh picks so changing
+    // the course produces a clean new set rather than a stacked accumulation.
+    set('skills')([...new Set(s)].slice(0, 6));
     toast.info('AI suggested skills based on the course');
   };
 
@@ -96,9 +128,22 @@ export default function CertificateGenerator() {
     if (!form.recipientId || !form.recipientName.trim()) return toast.error('Pick a Maverick to issue this to first');
     setGenerating(true);
     try {
-      const text = await generateAchievementSummary(form);
+      const text = await generateAchievementSummary(form, { nonce: regenCount });
       setSummary(text);
       setStep(1);
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const handleRegenerate = async () => {
+    setGenerating(true);
+    try {
+      const nextNonce = regenCount + 1;
+      setRegenCount(nextNonce);
+      const text = await generateAchievementSummary(form, { nonce: nextNonce });
+      setSummary(text);
+      toast.info('AI regenerated a fresh narrative variant');
     } finally {
       setGenerating(false);
     }
@@ -117,26 +162,30 @@ export default function CertificateGenerator() {
   };
 
   const handleIssue = async () => {
-    const created = await createCertificate({ ...form, summary });
-    setIssued(created);
-    setStep(3);
-    // Notify the recipient Maverick — log to THEIR activity feed.
-    if (form.recipientId) {
-      trackEvent(form.recipientId, EVENT_TYPES.ISSUED, {
-        certificateName: form.course,
-        certId: created.id,
-        learningHours: form.learningHours,
-        issuedBy: 'Hexaware Mavericks Academy',
-      });
+    try {
+      const created = await createCertificate({ ...form, summary });
+      setIssued(created);
+      setStep(3);
+      // Notify the recipient Maverick — log to THEIR activity feed.
+      if (form.recipientId) {
+        trackEvent(form.recipientId, EVENT_TYPES.ISSUED, {
+          certificateName: form.course,
+          certId: created.id,
+          learningHours: form.learningHours,
+          issuedBy: 'Hexaware Mavericks Academy',
+        });
+      }
+      toast.success('Certificate issued & recorded on the ledger!');
+    } catch (err) {
+      toast.error(`Could not issue certificate — ${err?.message || 'try again'}`);
     }
-    toast.success('Certificate issued & recorded on the ledger!');
   };
 
   const reset = () => {
     setIssued(null);
     setSummary('');
     setStep(0);
-    setForm((f) => ({ ...f, recipientId: '', recipientName: '', recipientEmail: '', managerFeedback: '' }));
+    setForm((f) => ({ ...f, recipientId: '', recipientName: '', recipientEmail: '', managerFeedback: '', backgroundImage: null }));
   };
 
   return (
@@ -257,7 +306,8 @@ export default function CertificateGenerator() {
                   </div>
                   <p className="text-xs text-slate-500">You can edit the narrative above before continuing.</p>
                   <div className="flex gap-2">
-                    <Button variant="secondary" icon={RefreshCw} loading={generating} onClick={handleGenerate}>Regenerate</Button>
+                    <Button variant="ghost" onClick={() => setStep(0)}>Back</Button>
+                    <Button variant="secondary" icon={RefreshCw} loading={generating} onClick={handleRegenerate}>Regenerate</Button>
                     <Button className="flex-1" icon={Palette} onClick={() => setStep(2)}>Choose design</Button>
                   </div>
                 </GlassCard>
@@ -293,6 +343,55 @@ export default function CertificateGenerator() {
                       </button>
                     ))}
                   </div>
+
+                  {/* Optional custom background image */}
+                  <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3">
+                    <div className="mb-2 flex items-center justify-between">
+                      <p className="flex items-center gap-2 text-sm font-medium text-slate-300">
+                        <ImagePlus className="h-4 w-4 text-electric-300" /> Custom background
+                      </p>
+                      {form.backgroundImage && (
+                        <button
+                          type="button"
+                          onClick={clearBackground}
+                          className="flex items-center gap-1 text-[11px] text-rose-300 hover:text-rose-200"
+                        >
+                          <Trash2 className="h-3 w-3" /> Remove
+                        </button>
+                      )}
+                    </div>
+                    {form.backgroundImage ? (
+                      <div className="flex items-center gap-3">
+                        <img src={form.backgroundImage} alt="Background preview" className="h-16 w-24 shrink-0 rounded-lg border border-white/10 object-cover" />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs text-slate-300">Image applied to the certificate background.</p>
+                          <button
+                            type="button"
+                            onClick={() => bgInputRef.current?.click()}
+                            className="mt-1 text-[11px] text-electric-300 hover:text-electric-200"
+                          >
+                            Replace image
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => bgInputRef.current?.click()}
+                        className="flex h-16 w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-white/10 bg-white/[0.02] text-xs text-slate-400 transition-colors hover:border-electric-400/40 hover:text-electric-200"
+                      >
+                        <ImagePlus className="h-4 w-4" /> Upload image (PNG / JPG, ≤ 2 MB)
+                      </button>
+                    )}
+                    <input
+                      ref={bgInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleBackgroundUpload}
+                    />
+                  </div>
+
                   <div className="flex gap-2">
                     <Button variant="secondary" onClick={() => setStep(1)}>Back</Button>
                     <Button className="flex-1" icon={Send} onClick={handleIssue}>Issue certificate</Button>

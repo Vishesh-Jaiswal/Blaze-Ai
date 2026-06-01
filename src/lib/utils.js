@@ -54,18 +54,6 @@ export function seededRandom(seed) {
   return ((h ^= h >>> 16) >>> 0) / 4294967296;
 }
 
-/** Generate a blockchain-style hash string from arbitrary input. */
-export function generateHash(input, length = 64) {
-  const chars = 'abcdef0123456789';
-  const base = String(input) + Date.now();
-  let out = '';
-  for (let i = 0; i < length; i++) {
-    const r = seededRandom(base + i);
-    out += chars[Math.floor(r * chars.length)];
-  }
-  return out;
-}
-
 /**
  * Real SHA-256 hash via Web Crypto. Returns a 64-char lowercase hex string.
  * Anyone (verifier, client, recruiter) can recompute this from a cert's

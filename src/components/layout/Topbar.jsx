@@ -11,9 +11,20 @@ import { ROLE_META, navForRole, ROLES } from '@/config/roles';
 import { SEED_CERTIFICATES, LEADERBOARD, DEMO_USERS } from '@/data/mockData';
 import { listCertificates } from '@/services/certificateService';
 import { listEvents, EVENT_TYPES } from '@/services/activityService';
-import { initials, timeAgo } from '@/lib/utils';
+import {
+  hasApiKey,
+  modelName,
+  providerName,
+  getApiHealth,
+  subscribeApiHealth,
+  lastClaudeError,
+} from '@/services/anthropicClient';
 
-const timeAgoMs = (ms) => timeAgo(new Date(ms).toISOString());
+const PROVIDER_LABEL = {
+  anthropic: 'Anthropic',
+  gemini: 'Google Gemini',
+};
+import { initials, timeAgo } from '@/lib/utils';
 
 /**
  * Format a stored activity event into a notification card.
@@ -86,7 +97,7 @@ function buildNotifications({ user, isDemoUser }) {
     .filter(Boolean);
 
   // Admin-flavored demo baseline (no real source for these yet)
-  const adminBaseline = (!isDemoUser || user.role === ROLES.MAVERICK || user.role === ROLES.VERIFIER) ? [] : [
+  const adminBaseline = (!isDemoUser || user.role === ROLES.MAVERICK) ? [] : [
     { id: 'baseline-1', icon: Check, tone: 'emerald', text: 'New certificate verified by Acme Corp.', when: Date.now() - 2 * 60 * 1000 },
     { id: 'baseline-2', icon: AlertTriangle, tone: 'rose', text: 'Fraud attempt blocked on REQ-2026-0502.', when: Date.now() - 60 * 60 * 1000 },
     { id: 'baseline-3', icon: Sparkles, tone: 'amber', text: '12 certificates are pending your approval.', when: Date.now() - 3 * 3600 * 1000 },
@@ -115,6 +126,12 @@ export default function Topbar({ onMenu, title }) {
   const isDemoUser = useMemo(() => DEMO_USERS.some((d) => d.email === user.email), [user.email]);
   const isMaverick = user.role === ROLES.MAVERICK;
 
+  // Subscribe to AI health so the pill reflects whether real Claude calls
+  // are succeeding — a present API key with failing calls (e.g. billing
+  // issues) should not display as "AI Online".
+  const [aiHealth, setAiHealth] = useState(getApiHealth());
+  useEffect(() => subscribeApiHealth(setAiHealth), []);
+
   const [openMenu, setOpenMenu] = useState(null); // 'search' | 'notif' | 'ai' | null
   const [query, setQuery] = useState('');
   const [searchActive, setSearchActive] = useState(0);
@@ -142,7 +159,7 @@ export default function Topbar({ onMenu, title }) {
           setUserCerts([]);
         }
       } else {
-        // Admins/L&D/Verifiers can search the full registry
+        // L&D managers can search the full registry
         setUserCerts(all);
       }
     });
@@ -312,48 +329,73 @@ export default function Topbar({ onMenu, title }) {
       </div>
 
       <div className="ml-auto flex items-center gap-2 md:ml-0">
-        {/* AI Online — now interactive */}
+        {/* AI status — reflects real call health, not just key presence. */}
         <div className="relative hidden sm:block" ref={aiRef}>
-          <button
-            onClick={() => setOpenMenu((m) => (m === 'ai' ? null : 'ai'))}
-            aria-label="AI engine status"
-            className="flex items-center gap-1.5 rounded-full border border-electric-400/30 bg-electric-500/10 px-3 py-1.5 text-xs font-medium text-electric-200 transition-colors hover:bg-electric-500/20"
-          >
-            <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_8px_currentColor]" />
-            </span>
-            <Sparkles className="h-3.5 w-3.5" /> AI Online
-          </button>
-          <AnimatePresence>
-            {openMenu === 'ai' && (
-              <motion.div
-                initial={{ opacity: 0, y: -8, scale: 0.96 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -8, scale: 0.96 }}
-                className="absolute right-0 z-20 mt-2 w-72 rounded-xl border border-white/10 bg-ink-900 p-3 shadow-2xl shadow-black/60"
-              >
-                <div className="mb-2 flex items-center justify-between">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">AI Engine</p>
-                  <span className="flex items-center gap-1 text-[11px] text-emerald-300">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_currentColor]" /> Operational
+          {(() => {
+            const keyed = hasApiKey();
+            const failed = keyed && aiHealth === 'failed';
+            const live = keyed && aiHealth !== 'failed';
+            const pillClass = failed
+              ? 'border-rose-400/40 bg-rose-500/10 text-rose-200 hover:bg-rose-500/20'
+              : live
+                ? 'border-electric-400/30 bg-electric-500/10 text-electric-200 hover:bg-electric-500/20'
+                : 'border-white/10 bg-white/5 text-slate-400 hover:bg-white/10';
+            const dotClass = failed ? 'bg-rose-400' : live ? 'bg-emerald-400' : 'bg-slate-500';
+            const label = failed ? 'AI Degraded' : live ? 'AI Online' : 'AI Offline';
+            return (
+              <>
+                <button
+                  onClick={() => setOpenMenu((m) => (m === 'ai' ? null : 'ai'))}
+                  aria-label="AI engine status"
+                  className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${pillClass}`}
+                >
+                  <span className="relative flex h-2 w-2">
+                    {live && (
+                      <span className={`absolute inline-flex h-full w-full animate-ping rounded-full opacity-60 ${dotClass}`} />
+                    )}
+                    <span className={`relative inline-flex h-2 w-2 rounded-full shadow-[0_0_8px_currentColor] ${dotClass}`} />
                   </span>
-                </div>
-                <div className="space-y-1">
-                  {AI_CAPABILITIES.map((c) => (
-                    <div key={c.label} className="flex items-center gap-2.5 rounded-lg px-2 py-1.5">
-                      <c.icon className="h-4 w-4 shrink-0 text-electric-300" />
-                      <span className="flex-1 text-sm text-slate-200">{c.label}</span>
-                      <Check className="h-3.5 w-3.5 text-emerald-400" />
-                    </div>
-                  ))}
-                </div>
-                <div className="mt-2 border-t border-white/10 pt-2 text-[11px] text-slate-500">
-                  Powered by an LLM proxy. Last sync just now.
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+                  <Sparkles className="h-3.5 w-3.5" /> {label}
+                </button>
+                <AnimatePresence>
+                  {openMenu === 'ai' && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -8, scale: 0.96 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -8, scale: 0.96 }}
+                      className="absolute right-0 z-20 mt-2 w-72 rounded-xl border border-white/10 bg-ink-900 p-3 shadow-2xl shadow-black/60"
+                    >
+                      <div className="mb-2 flex items-center justify-between">
+                        <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">AI Engine</p>
+                        <span className={`flex items-center gap-1 text-[11px] ${failed ? 'text-rose-300' : live ? 'text-emerald-300' : 'text-slate-400'}`}>
+                          <span className={`h-1.5 w-1.5 rounded-full shadow-[0_0_6px_currentColor] ${dotClass}`} />
+                          {failed ? 'Calls failing' : live ? 'Operational' : 'Mock mode'}
+                        </span>
+                      </div>
+                      <div className="space-y-1">
+                        {AI_CAPABILITIES.map((c) => (
+                          <div key={c.label} className="flex items-center gap-2.5 rounded-lg px-2 py-1.5">
+                            <c.icon className="h-4 w-4 shrink-0 text-electric-300" />
+                            <span className="flex-1 text-sm text-slate-200">{c.label}</span>
+                            <Check className={`h-3.5 w-3.5 ${failed ? 'text-rose-400' : live ? 'text-emerald-400' : 'text-slate-500'}`} />
+                          </div>
+                        ))}
+                      </div>
+                      <div className="mt-2 border-t border-white/10 pt-2 text-[11px] text-slate-500">
+                        {failed ? (
+                          <>Last call failed: <span className="text-rose-300">{lastClaudeError() || 'unknown error'}</span>. App is falling back to deterministic mock until the issue is resolved.</>
+                        ) : live ? (
+                          <>Powered by {PROVIDER_LABEL[providerName()] || 'AI'} <span className="font-mono text-slate-400">{modelName()}</span>.</>
+                        ) : (
+                          <>No API key set — running deterministic mock. Add <span className="font-mono text-slate-400">VITE_GEMINI_API_KEY</span> (free) or <span className="font-mono text-slate-400">VITE_ANTHROPIC_API_KEY</span> (paid) to <span className="font-mono text-slate-400">.env.local</span>.</>
+                        )}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </>
+            );
+          })()}
         </div>
 
         {/* Light / dark mode quick toggle */}

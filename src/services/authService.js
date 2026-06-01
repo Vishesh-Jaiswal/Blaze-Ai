@@ -1,5 +1,7 @@
 import { delay } from '@/lib/utils';
 import { DEMO_USERS } from '@/data/mockData';
+import { ROLES } from '@/config/roles';
+import { notifyChange } from '@/lib/db';
 
 /**
  * Mock authentication service simulating a JWT-based backend.
@@ -9,17 +11,30 @@ import { DEMO_USERS } from '@/data/mockData';
 const STORAGE_KEY = 'mc.session';
 const USERS_KEY = 'mc.users';
 
+const VALID_ROLES = new Set(Object.values(ROLES));
+
 function loadUsers() {
   try {
     const stored = JSON.parse(localStorage.getItem(USERS_KEY) || 'null');
-    if (stored?.length) return stored;
+    if (stored?.length) {
+      // Drop any users whose role no longer exists in the role registry
+      // (e.g. removed HR/Super/Verifier seeds from a previous app version).
+      const cleaned = stored.filter((u) => VALID_ROLES.has(u.role));
+      if (cleaned.length !== stored.length) {
+        localStorage.setItem(USERS_KEY, JSON.stringify(cleaned));
+        notifyChange('users');
+      }
+      return cleaned;
+    }
   } catch (_) {}
   localStorage.setItem(USERS_KEY, JSON.stringify(DEMO_USERS));
+  notifyChange('users');
   return DEMO_USERS;
 }
 
 function saveUsers(users) {
   localStorage.setItem(USERS_KEY, JSON.stringify(users));
+  notifyChange('users');
 }
 
 function b64url(obj) {
@@ -183,7 +198,14 @@ export async function listUsers({ role } = {}) {
 
 export function getSession() {
   try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
+    const session = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
+    // If the cached session belongs to a role we no longer support, treat
+    // it as logged out so the user lands back at /login instead of crashing.
+    if (session?.user && !VALID_ROLES.has(session.user.role)) {
+      localStorage.removeItem(STORAGE_KEY);
+      return null;
+    }
+    return session;
   } catch {
     return null;
   }

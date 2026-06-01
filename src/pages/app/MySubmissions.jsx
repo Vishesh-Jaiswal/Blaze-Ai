@@ -30,7 +30,9 @@ export default function MySubmissions() {
   const [detail, setDetail] = useState(null);
 
   useEffect(() => {
-    listSubmissions({ submittedById: user.id }).then(setSubs);
+    listSubmissions({ submittedById: user.id })
+      .then(setSubs)
+      .catch(() => setSubs([])); // Empty state on failure instead of perpetual spinner.
   }, [user.id]);
 
   const counts = useMemo(() => {

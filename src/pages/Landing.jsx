@@ -129,7 +129,7 @@ export default function Landing() {
       </section>
 
       {/* FLOATING CERTIFICATES STRIP */}
-      <section className="relative mx-auto -mt-10 max-w-6xl px-6">
+      <section className="relative mx-auto mt-12 max-w-6xl px-6">
         <div className="grid gap-6 md:grid-cols-3">
           {SEED_CERTIFICATES.slice(0, 3).map((c, i) => (
             <motion.div

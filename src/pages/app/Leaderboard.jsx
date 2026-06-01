@@ -32,7 +32,12 @@ const TREND = {
  *  - 5 points per active day
  */
 function computePointsFor(user, allCerts) {
-  const certs = allCerts.filter((c) => c.recipientId === user.id || c.recipientName === user.name);
+  // Prefer the canonical recipientId — falling back to name only when the
+  // cert has no id (legacy seed records). This avoids two users with the
+  // same display name accidentally pooling each other's points.
+  const certs = allCerts.filter((c) =>
+    c.recipientId ? c.recipientId === user.id : c.recipientName === user.name
+  );
   const learningHours = certs.reduce((sum, c) => sum + (c.learningHours || 0), 0);
   const events = listEvents(user.id);
   const activeDays = new Set(events.map((e) => Math.floor(e.at / 86400000))).size;

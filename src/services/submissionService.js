@@ -1,7 +1,8 @@
-import { delay, generateCertificateId, generateHash } from '@/lib/utils';
+import { delay, generateCertificateId } from '@/lib/utils';
 import { SEED_SUBMISSIONS } from '@/data/mockData';
 import { createCertificate } from '@/services/certificateService';
 import { trackEvent, EVENT_TYPES } from '@/services/activityService';
+import { notifyChange } from '@/lib/db';
 
 /**
  * Certificate submission workflow layer (localStorage-backed mock DB).
@@ -14,17 +15,43 @@ import { trackEvent, EVENT_TYPES } from '@/services/activityService';
  */
 const KEY = 'mc.submissions.v2';
 
+/**
+ * Collapse rows that share an id. Last write wins — keeps the most recently
+ * updated copy (since reviewSubmission and createSubmission both append).
+ * Auto-fixes the duplicate-row issue caused by an earlier collision in
+ * `nextId()` where the module counter would reset on page reload.
+ */
+function dedupe(list) {
+  const map = new Map();
+  for (const s of list) {
+    if (s && s.id) map.set(s.id, s);
+  }
+  return Array.from(map.values());
+}
+
 function load() {
   try {
     const stored = JSON.parse(localStorage.getItem(KEY) || 'null');
-    if (Array.isArray(stored)) return stored;
+    if (Array.isArray(stored)) {
+      const deduped = dedupe(stored);
+      if (deduped.length !== stored.length) {
+        // Persist the cleaned list so the fix is durable.
+        localStorage.setItem(KEY, JSON.stringify(deduped));
+        notifyChange('submissions');
+      }
+      return deduped;
+    }
   } catch (_) {}
   localStorage.setItem(KEY, JSON.stringify(SEED_SUBMISSIONS));
+  notifyChange('submissions');
   return SEED_SUBMISSIONS;
 }
 
 function save(list) {
-  localStorage.setItem(KEY, JSON.stringify(list));
+  // Always dedupe on the way in so an upstream bug can never persist duplicates.
+  const clean = dedupe(list);
+  localStorage.setItem(KEY, JSON.stringify(clean));
+  notifyChange('submissions');
 }
 
 const byNewest = (a, b) => new Date(b.submittedAt || 0) - new Date(a.submittedAt || 0);
@@ -43,10 +70,23 @@ export async function getSubmission(id) {
   return load().find((s) => s.id === id) || null;
 }
 
-let counter = 6;
+/**
+ * Deterministic next ID — derived from the current max in the registry so it
+ * never collides even when the page is reloaded mid-session. Year prefix
+ * tracks the current calendar year.
+ */
 function nextId() {
-  const seq = String(counter++).padStart(4, '0');
-  return `SUB-2026-${seq}`;
+  const list = load();
+  let max = 0;
+  for (const s of list) {
+    const m = String(s.id || '').match(/^SUB-\d{4}-(\d{4,})$/);
+    if (m) {
+      const n = parseInt(m[1], 10);
+      if (n > max) max = n;
+    }
+  }
+  const seq = String(max + 1).padStart(4, '0');
+  return `SUB-${new Date().getFullYear()}-${seq}`;
 }
 
 export async function createSubmission(data) {

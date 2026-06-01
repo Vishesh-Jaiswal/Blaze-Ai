@@ -1,26 +1,15 @@
 import { delay, generateCertificateId, computeCertHash } from '@/lib/utils';
 import { SEED_CERTIFICATES } from '@/data/mockData';
+import { notifyChange } from '@/lib/db';
 
 /**
  * Certificate persistence layer (localStorage-backed mock DB).
  */
 const KEY = 'mc.certificates';
-const V2_KEY = 'mc.certificates.v2'; // legacy from a brief bump — we now backfill in place
 
 function load() {
   try {
-    let stored = JSON.parse(localStorage.getItem(KEY) || 'null');
-
-    // Recover from a previous accidental v2 bump: pull anything in v2 that
-    // isn't in v1 yet (typically the seed-only entries from a fresh v2 init)
-    // so we don't lose user-created certs that may have been written to v2.
-    const v2 = JSON.parse(localStorage.getItem(V2_KEY) || 'null');
-    if (Array.isArray(v2) && v2.length) {
-      const map = new Map(((stored || [])).map((c) => [c.id, c]));
-      for (const c of v2) if (!map.has(c.id)) map.set(c.id, c);
-      stored = Array.from(map.values());
-      localStorage.removeItem(V2_KEY);
-    }
+    const stored = JSON.parse(localStorage.getItem(KEY) || 'null');
 
     if (stored?.length) {
       // Backfill newly-added fields (learningHours) for any pre-existing
@@ -34,16 +23,21 @@ function load() {
         }
         return c;
       });
-      if (dirty) localStorage.setItem(KEY, JSON.stringify(upgraded));
+      if (dirty) {
+        localStorage.setItem(KEY, JSON.stringify(upgraded));
+        notifyChange('certificates');
+      }
       return upgraded;
     }
   } catch (_) {}
   localStorage.setItem(KEY, JSON.stringify(SEED_CERTIFICATES));
+  notifyChange('certificates');
   return SEED_CERTIFICATES;
 }
 
 function save(list) {
   localStorage.setItem(KEY, JSON.stringify(list));
+  notifyChange('certificates');
 }
 
 export async function listCertificates(filter = {}) {

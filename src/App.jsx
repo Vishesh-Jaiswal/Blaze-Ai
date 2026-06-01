@@ -1,7 +1,9 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import { ROLES, ROLE_META } from '@/config/roles';
+import { bootstrap } from '@/lib/db';
+import Spinner from '@/components/ui/Spinner';
 
 import AnimatedBackground from '@/components/background/AnimatedBackground';
 import CursorGlow from '@/components/background/CursorGlow';
@@ -40,7 +42,25 @@ function RoleHome() {
 
 export default function App() {
   const init = useAuthStore((s) => s.init);
-  useEffect(() => init(), [init]);
+  const [ready, setReady] = useState(false);
+
+  // Pull disk-persisted data into localStorage before the auth store reads
+  // the session — otherwise the session would point at a user that hasn't
+  // been mirrored in yet on a fresh clone.
+  useEffect(() => {
+    bootstrap().finally(() => {
+      init();
+      setReady(true);
+    });
+  }, [init]);
+
+  if (!ready) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-ink-900">
+        <Spinner label="Loading workspace…" />
+      </div>
+    );
+  }
 
   return (
     <>
@@ -71,7 +91,7 @@ export default function App() {
           <Route
             path="admin"
             element={
-              <ProtectedRoute roles={[ROLES.HR_ADMIN, ROLES.LND_MANAGER, ROLES.SUPER_ADMIN]}>
+              <ProtectedRoute roles={[ROLES.LND_MANAGER]}>
                 <AdminDashboard />
               </ProtectedRoute>
             }

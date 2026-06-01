@@ -95,7 +95,7 @@ export default function UserManagement() {
         <StatPill label="Total users" value={users?.length ?? '—'} />
         <StatPill label="Mavericks" value={users ? users.filter((u) => u.role === ROLES.MAVERICK).length : '—'} tone="emerald" />
         <StatPill label="New signups" value={users ? newSignups : '—'} tone="amber" />
-        <StatPill label="Admins" value={users ? users.filter((u) => u.role !== ROLES.MAVERICK && u.role !== ROLES.VERIFIER).length : '—'} tone="violet" />
+        <StatPill label="Admins" value={users ? users.filter((u) => u.role !== ROLES.MAVERICK).length : '—'} tone="violet" />
       </div>
 
       <GlassCard className="relative z-20 mb-6 flex flex-col gap-3 p-4 sm:flex-row">

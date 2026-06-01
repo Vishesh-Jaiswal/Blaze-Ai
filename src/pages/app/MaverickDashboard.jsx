@@ -58,15 +58,17 @@ export default function MaverickDashboard() {
   }, [user, isDemoUser, location.pathname]);
 
   useEffect(() => {
-    listCertificates().then((all) => {
-      const mine = all.filter((c) => c.recipientName === user.name || c.recipientId === user.id);
-      if (mine.length) return setCerts(mine);
-      if (isDemoUser) {
-        setCerts(SEED_CERTIFICATES.slice(0, 6).map((c) => ({ ...c, recipientName: user.name })));
-      } else {
-        setCerts([]);
-      }
-    });
+    listCertificates()
+      .then((all) => {
+        const mine = all.filter((c) => c.recipientName === user.name || c.recipientId === user.id);
+        if (mine.length) return setCerts(mine);
+        if (isDemoUser) {
+          setCerts(SEED_CERTIFICATES.slice(0, 6).map((c) => ({ ...c, recipientName: user.name })));
+        } else {
+          setCerts([]);
+        }
+      })
+      .catch(() => setCerts([])); // Resolve to empty so the spinner doesn't hang forever on a load failure.
   }, [user.id, user.name, isDemoUser]);
 
   const weeklyTotal = useMemo(() => weekly.reduce((a, b) => a + b.value, 0), [weekly]);

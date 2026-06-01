@@ -1,4 +1,3 @@
-import { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
@@ -12,12 +11,10 @@ export default function GlassCard({
   glow = false,
   hover = false,
   strong = false,
-  as: Tag = 'div',
   ...props
 }) {
-  const MotionTag = useMemo(() => motion(Tag), [Tag]);
   return (
-    <MotionTag
+    <motion.div
       className={cn(
         strong ? 'glass-strong' : 'glass',
         glow && 'glow-border',
@@ -34,6 +31,6 @@ export default function GlassCard({
       {...props}
     >
       {children}
-    </MotionTag>
+    </motion.div>
   );
 }

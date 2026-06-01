@@ -9,6 +9,7 @@ import Button from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
 import Spinner from '@/components/ui/Spinner';
 import SubmissionReviewModal from '@/components/certificate/SubmissionReviewModal';
+import RejectSubmissionModal from '@/components/certificate/RejectSubmissionModal';
 import { listSubmissions, reviewSubmission } from '@/services/submissionService';
 import { useAuthStore } from '@/store/authStore';
 import { useToast } from '@/store/toastStore';
@@ -20,6 +21,7 @@ export default function ApprovalQueue() {
   const [items, setItems] = useState(null);
   const [selected, setSelected] = useState([]);
   const [review, setReview] = useState(null);
+  const [rejectTarget, setRejectTarget] = useState(null);
   const [busy, setBusy] = useState(null);
   const [bulkBusy, setBulkBusy] = useState(false);
 
@@ -31,27 +33,48 @@ export default function ApprovalQueue() {
 
   const decide = async (submission, decision, comment, learningHours = 0) => {
     setBusy(decision);
-    await reviewSubmission(submission.id, { decision, comment, reviewer: user.name, learningHours });
-    setItems((list) => list.filter((s) => s.id !== submission.id));
-    setSelected((s) => s.filter((x) => x !== submission.id));
-    setBusy(null);
-    setReview(null);
-    toast[decision === 'approved' ? 'success' : 'warning'](
-      decision === 'approved' ? `Approved — ${learningHours}h awarded & certificate issued` : 'Submission rejected'
-    );
+    try {
+      await reviewSubmission(submission.id, { decision, comment, reviewer: user.name, learningHours });
+      setItems((list) => list.filter((s) => s.id !== submission.id));
+      setSelected((s) => s.filter((x) => x !== submission.id));
+      setReview(null);
+      setRejectTarget(null);
+      toast[decision === 'approved' ? 'success' : 'warning'](
+        decision === 'approved' ? `Approved — ${learningHours}h awarded & certificate issued` : 'Submission rejected'
+      );
+    } catch (err) {
+      toast.error(`Could not ${decision === 'approved' ? 'approve' : 'reject'} — ${err?.message || 'try again'}`);
+    } finally {
+      setBusy(null);
+    }
   };
+
+  const confirmReject = (submission, reason) => decide(submission, 'rejected', reason, 0);
 
   const bulkApprove = async () => {
     setBulkBusy(true);
     const ids = [...selected];
-    for (const id of ids) {
-      const sub = items.find((s) => s.id === id);
-      if (sub) await reviewSubmission(id, { decision: 'approved', comment: 'Bulk approved', reviewer: user.name, learningHours: 20 });
+    const succeeded = [];
+    try {
+      // Promise.allSettled so one failure doesn't abort the rest of the batch.
+      const results = await Promise.allSettled(
+        ids.map((id) => {
+          const sub = items.find((s) => s.id === id);
+          if (!sub) return Promise.reject(new Error('not in queue'));
+          return reviewSubmission(id, { decision: 'approved', comment: 'Bulk approved', reviewer: user.name, learningHours: 20 });
+        })
+      );
+      results.forEach((r, i) => { if (r.status === 'fulfilled') succeeded.push(ids[i]); });
+      const failed = ids.length - succeeded.length;
+      setItems((list) => list.filter((s) => !succeeded.includes(s.id)));
+      setSelected((s) => s.filter((x) => !succeeded.includes(x)));
+      if (succeeded.length) {
+        toast.success(`${succeeded.length} certificate${succeeded.length > 1 ? 's' : ''} approved & 20h each awarded`);
+      }
+      if (failed) toast.error(`${failed} submission${failed > 1 ? 's' : ''} failed to approve.`);
+    } finally {
+      setBulkBusy(false);
     }
-    setItems((list) => list.filter((s) => !ids.includes(s.id)));
-    setSelected([]);
-    setBulkBusy(false);
-    toast.success(`${ids.length} certificate${ids.length > 1 ? 's' : ''} approved & 20h each awarded`);
   };
 
   const toggle = (id) => setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
@@ -121,6 +144,7 @@ export default function ApprovalQueue() {
                     </div>
                     <div className="flex items-center gap-2">
                       <Button size="sm" variant="ghost" icon={Eye} onClick={() => setReview(s)}>Review</Button>
+                      <Button size="sm" variant="danger" icon={X} onClick={() => setRejectTarget(s)}>Reject</Button>
                       <Button size="sm" variant="success" icon={Check} loading={busy === 'approved' && review?.id === s.id} onClick={() => decide(s, 'approved', 'Approved', 20)}>Approve</Button>
                     </div>
                   </GlassCard>
@@ -136,6 +160,14 @@ export default function ApprovalQueue() {
         busy={busy}
         onClose={() => !busy && setReview(null)}
         onDecision={decide}
+      />
+
+      <RejectSubmissionModal
+        submission={rejectTarget}
+        open={!!rejectTarget}
+        busy={busy}
+        onClose={() => !busy && setRejectTarget(null)}
+        onConfirm={confirmReject}
       />
     </div>
   );
